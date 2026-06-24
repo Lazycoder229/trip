@@ -1,4 +1,4 @@
-name: Build Trip Executables
+name: Build Trip
 
 on:
   push:
@@ -7,8 +7,9 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ─── Windows: build exe → wrap in NSIS installer ──────────────────────────
   build-windows:
-    name: Build Windows EXE
+    name: Build Windows Installer
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,15 +22,21 @@ jobs:
       - name: Install pkg
         run: npm install -g pkg
 
-      - name: Build trip.exe
+      # --icon embeds trip-icon.ico into the exe itself
+      - name: Build trip.exe (with icon)
         run: pkg trip.js --targets node18-win-x64 --output trip.exe --icon trip-icon.ico
 
-      - name: Upload artifact
+      # NSIS is pre-installed on windows-latest runners
+      - name: Build TripSetup.exe installer
+        run: makensis installer.nsi
+
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trip-windows
-          path: trip.exe
+          name: trip-windows-installer
+          path: TripSetup.exe
 
+  # ─── Linux: build standalone binary ───────────────────────────────────────
   build-linux:
     name: Build Linux Binary
     runs-on: ubuntu-latest
@@ -53,6 +60,7 @@ jobs:
           name: trip-linux
           path: trip-linux
 
+  # ─── Release: attach both to GitHub release ───────────────────────────────
   release:
     name: Create Release
     needs: [build-windows, build-linux]
@@ -61,12 +69,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download Windows artifact
+      - name: Download Windows installer
         uses: actions/download-artifact@v4
         with:
-          name: trip-windows
+          name: trip-windows-installer
 
-      - name: Download Linux artifact
+      - name: Download Linux binary
         uses: actions/download-artifact@v4
         with:
           name: trip-linux
@@ -75,6 +83,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            trip.exe
+            TripSetup.exe
             trip-linux
           generate_release_notes: true
