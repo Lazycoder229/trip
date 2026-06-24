@@ -35,6 +35,11 @@ SetCompressor /SOLID lzma
 
 !insertmacro MUI_LANGUAGE "English"
 
+!include "WordFunc.nsh"
+!include "StrFunc.nsh"
+${StrStr}
+${StrRep}
+
 ; ─── Install ────────────────────────────────────────────────────────────────
 Section "Trip (required)" SecMain
   SectionIn RO
@@ -43,8 +48,12 @@ Section "Trip (required)" SecMain
   File "trip.exe"
   File "trip-icon.ico"
 
-  ; Add to system PATH
-  EnVar::AddValue "PATH" "$INSTDIR"
+  ; Add to system PATH via registry
+  ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+  ${StrStr} $1 "$0" "$INSTDIR"
+  StrCmp $1 "" 0 +2
+    WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$0;$INSTDIR"
+  SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
 
   ; Register file association for .tp files
   WriteRegStr HKCR ".tp"              "" "TripScript"
@@ -69,7 +78,13 @@ SectionEnd
 ; ─── Uninstall ──────────────────────────────────────────────────────────────
 Section "Uninstall"
   ; Remove from PATH
-  EnVar::DeleteValue "PATH" "$INSTDIR"
+  ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+  ${StrStr} $1 "$0" ";$INSTDIR"
+  StrCmp $1 "" done
+    ${StrRep} $2 "$0" ";$INSTDIR" ""
+    WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$2"
+    SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
+  done:
 
   ; Remove files
   Delete "$INSTDIR\trip.exe"
