@@ -26,7 +26,9 @@ jobs:
       - name: Build trip.exe (with icon)
         run: pkg trip.js --targets node18-win-x64 --output trip.exe --icon trip-icon.ico
 
-      # NSIS is pre-installed on windows-latest runners
+      - name: Install NSIS
+        run: choco install nsis -y
+
       - name: Build TripSetup.exe installer
         run: makensis installer.nsi
 
