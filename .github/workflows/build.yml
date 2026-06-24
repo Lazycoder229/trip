@@ -22,14 +22,7 @@ jobs:
         run: npm install -g pkg
 
       - name: Build trip.exe
-        run: pkg trip.js --targets node18-win-x64 --output trip.exe
-
-      - name: Download rcedit
-        run: |
-          curl -L -o rcedit.exe https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe
-
-      - name: Inject custom icon
-        run: .\rcedit.exe "trip.exe" --set-icon "trip-icon.ico"
+        run: pkg trip.js --targets node18-win-x64 --output trip.exe --icon trip-icon.ico
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
