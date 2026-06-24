@@ -7,7 +7,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ─── Windows: build exe → wrap in NSIS installer ──────────────────────────
   build-windows:
     name: Build Windows Installer
     runs-on: windows-latest
@@ -23,12 +22,7 @@ jobs:
         run: npm install -g pkg
 
       - name: Build trip.exe
-        run: pkg trip.js --targets node18-win-x64 --output trip.exe
-
-      - name: Set icon with rcedit
-        run: |
-          npm install rcedit
-          node -e "require('rcedit')('trip.exe', {'icon': 'trip-icon.ico'}, function(err){ if(err) { console.error(err); process.exit(1); } console.log('Icon set!'); })"
+        run: pkg trip.js --targets node18-win-x64 --output trip.exe --icon trip-icon.ico
 
       - name: Install NSIS
         run: choco install nsis -y
@@ -45,7 +39,6 @@ jobs:
           name: trip-windows-installer
           path: TripSetup.exe
 
-  # ─── Linux: build standalone binary ───────────────────────────────────────
   build-linux:
     name: Build Linux Binary
     runs-on: ubuntu-latest
@@ -69,7 +62,6 @@ jobs:
           name: trip-linux
           path: trip-linux
 
-  # ─── Release: attach both to GitHub release ───────────────────────────────
   release:
     name: Create Release
     needs: [build-windows, build-linux]
