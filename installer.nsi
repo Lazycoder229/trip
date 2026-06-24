@@ -1,13 +1,10 @@
 ; ─── Trip Language Installer ───────────────────────────────────────────────
-; NSIS installer script for the Trip programming language
 
 !define APP_NAME     "Trip"
 !define APP_VERSION  "1.0.0"
-!define APP_EXE      "trip.exe"
 !define INSTALL_DIR  "$PROGRAMFILES64\Trip"
 !define REG_KEY      "Software\Microsoft\Windows\CurrentVersion\Uninstall\Trip"
 
-; Metadata
 Name "${APP_NAME} ${APP_VERSION}"
 OutFile "TripSetup.exe"
 InstallDir "${INSTALL_DIR}"
@@ -15,7 +12,6 @@ InstallDirRegKey HKLM "${REG_KEY}" "InstallLocation"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 
-; Modern UI
 !include "MUI2.nsh"
 
 !define MUI_ICON "trip-icon.ico"
@@ -35,12 +31,6 @@ SetCompressor /SOLID lzma
 
 !insertmacro MUI_LANGUAGE "English"
 
-!include "WordFunc.nsh"
-!include "StrFunc.nsh"
-${StrStr}
-${StrRep}
-
-; ─── Install ────────────────────────────────────────────────────────────────
 Section "Trip (required)" SecMain
   SectionIn RO
 
@@ -48,20 +38,15 @@ Section "Trip (required)" SecMain
   File "trip.exe"
   File "trip-icon.ico"
 
-  ; Add to system PATH via registry
   ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
-  ${StrStr} $1 "$0" "$INSTDIR"
-  StrCmp $1 "" 0 +2
-    WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$0;$INSTDIR"
+  WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$0;$INSTDIR"
   SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
 
-  ; Register file association for .tp files
-  WriteRegStr HKCR ".tp"              "" "TripScript"
-  WriteRegStr HKCR "TripScript"       "" "Trip Script"
+  WriteRegStr HKCR ".tp" "" "TripScript"
+  WriteRegStr HKCR "TripScript" "" "Trip Script"
   WriteRegStr HKCR "TripScript\DefaultIcon" "" "$INSTDIR\trip-icon.ico,0"
   WriteRegStr HKCR "TripScript\shell\open\command" "" '"$INSTDIR\trip.exe" "%1"'
 
-  ; Write uninstall info (shows in Add/Remove Programs)
   WriteRegStr   HKLM "${REG_KEY}" "DisplayName"          "Trip Programming Language"
   WriteRegStr   HKLM "${REG_KEY}" "DisplayVersion"       "${APP_VERSION}"
   WriteRegStr   HKLM "${REG_KEY}" "Publisher"            "Trip"
@@ -75,27 +60,13 @@ Section "Trip (required)" SecMain
   WriteUninstaller "$INSTDIR\uninstall.exe"
 SectionEnd
 
-; ─── Uninstall ──────────────────────────────────────────────────────────────
 Section "Uninstall"
-  ; Remove from PATH
-  ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
-  ${StrStr} $1 "$0" ";$INSTDIR"
-  StrCmp $1 "" done
-    ${StrRep} $2 "$0" ";$INSTDIR" ""
-    WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$2"
-    SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
-  done:
-
-  ; Remove files
   Delete "$INSTDIR\trip.exe"
   Delete "$INSTDIR\trip-icon.ico"
   Delete "$INSTDIR\uninstall.exe"
   RMDir  "$INSTDIR"
 
-  ; Remove file association
   DeleteRegKey HKCR ".tp"
   DeleteRegKey HKCR "TripScript"
-
-  ; Remove from Add/Remove Programs
   DeleteRegKey HKLM "${REG_KEY}"
 SectionEnd
