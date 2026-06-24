@@ -30,7 +30,10 @@ jobs:
         run: choco install nsis -y
 
       - name: Build TripSetup.exe installer
-        run: makensis installer.nsi
+        run: |
+          $env:PATH += ";C:\Program Files (x86)\NSIS"
+          makensis installer.nsi
+        shell: powershell
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
