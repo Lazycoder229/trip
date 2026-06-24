@@ -19,12 +19,15 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install pkg
-        run: npm install -g pkg
+      - name: Install pkg and rcedit
+        run: npm install -g pkg rcedit
 
-      # --icon embeds trip-icon.ico into the exe itself
-      - name: Build trip.exe (with icon)
-        run: pkg trip.js --targets node18-win-x64 --output trip.exe --icon trip-icon.ico
+      - name: Build trip.exe
+        run: pkg trip.js --targets node18-win-x64 --output trip.exe
+
+      # rcedit force-replaces the icon after pkg builds the exe
+      - name: Set trip-icon.ico on exe
+        run: rcedit trip.exe --set-icon trip-icon.ico
 
       - name: Install NSIS
         run: choco install nsis -y
