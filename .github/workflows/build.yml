@@ -18,11 +18,16 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install pkg
-        run: npm install -g pkg
+      - name: Install pkg and rcedit
+        run: |
+          npm install -g pkg
+          npm install -g rcedit
 
       - name: Build trip.exe
         run: pkg trip.js --targets node18-win-x64 --output trip.exe
+
+      - name: Inject custom icon
+        run: rcedit "trip.exe" --set-icon "trip-icon.ico"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

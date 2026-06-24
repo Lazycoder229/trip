@@ -32,3 +32,6 @@ To build standalone executables:
 npm install -g pkg
 pkg trip.js --targets node18-win-x64 --output trip.exe
 ```
+## Download
+- [⬇ trip.exe (Windows)](https://github.com/Lazycoder229/trip/releases/download/v1.0.0/trip.exe)
+- [⬇ trip-linux (Linux)](https://github.com/Lazycoder229/trip/releases/download/v1.0.0/trip-linux)
