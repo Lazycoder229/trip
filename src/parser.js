@@ -104,7 +104,13 @@ class Parser {
   parseParams() {
     const params = []
     while (!this.check(TT.RPAREN)) {
-      params.push(this.expect(TT.IDENT, 'parameter name').value)
+      // Accept both IDENT and SELF ('self') as parameter names
+      if (this.check(TT.SELF)) {
+        this.advance()
+        params.push('self')
+      } else {
+        params.push(this.expect(TT.IDENT, 'parameter name').value)
+      }
       if (!this.match(TT.COMMA)) break
     }
     return params
@@ -314,6 +320,24 @@ class Parser {
     }
 
     if (tok.type === TT.FN) return this.parseFn() // anonymous fn
+
+    // new ClassName(args) — syntactic sugar for a plain call expression.
+    // 'new Dog("Rex")' is identical to 'Dog("Rex")' at the AST level;
+    // the interpreter already handles class instantiation via CallExpr.
+    if (tok.type === TT.NEW) {
+      this.advance() // consume 'new'
+      const nameTok = this.expect(TT.IDENT, 'class name')
+      const callee  = new AST.Identifier(nameTok.value, nameTok.line)
+      const line    = nameTok.line
+      this.expect(TT.LPAREN, "'('")
+      const args = []
+      while (!this.check(TT.RPAREN)) {
+        args.push(this.parseExpr())
+        if (!this.match(TT.COMMA)) break
+      }
+      this.expect(TT.RPAREN, "')'")
+      return new AST.CallExpr(callee, args, line)
+    }
 
     if (tok.type === TT.LPAREN) {
       this.advance()

@@ -460,7 +460,11 @@ class Interpreter {
     // User-defined function
     if (callee instanceof LangFunction) {
       const scope = callee.closure.child()
-      callee.params.forEach((p, i) => scope.define(p, args[i] ?? null))
+      // Skip 'self' in the param list — it's already pre-bound in the closure
+      // by bindMethod(). If we re-bind it here it would overwrite self with null
+      // (since the caller doesn't pass self as an explicit argument).
+      const bindableParams = callee.params.filter(p => p !== 'self')
+      bindableParams.forEach((p, i) => scope.define(p, args[i] ?? null))
       const result = this.execBlock(callee.body.body, scope)
       if (result instanceof ReturnSignal) return result.value
       return null
