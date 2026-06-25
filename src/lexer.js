@@ -63,7 +63,8 @@ class Lexer {
   at(ch) { return this.source[this.pos] === ch }
 
   tokenize() {
-    const lines = this.source.split('\n')
+    const processedSource = this.processTripleQuotes(this.source)
+    const lines = processedSource.split('\n')
 
     for (let lineNum = 0; lineNum < lines.length; lineNum++) {
       const raw  = lines[lineNum]
@@ -144,10 +145,8 @@ processTripleQuotes(source) {
   return result
 }
   lexLine() {
-    const src = this.lineSource
-     const processed = this.processTripleQuotes(this.source)
-  const lines = processed.split('\n')
-    let i = 0
+  const src = this.lineSource
+  let i = 0
 
     while (i < src.length) {
       const ch = src[i]
