@@ -34,98 +34,42 @@ function run(source, filePath = process.cwd()) {
 }
 
 // ─── REPL ──────────────────────────────────────────────────────────────────
-// Determines whether the accumulated source is still incomplete (i.e. the
-// parser is waiting for a block body).  Used to decide if we should keep
-// collecting lines or execute immediately.
-function isIncomplete(source) {
-  try {
-    const tokens = new Lexer(source).tokenize()
-    new Parser(tokens).parse()
-    return false // parsed cleanly → complete
-  } catch (e) {
-    // These are the parser messages emitted when a block body is missing.
-    return /got 'EOF'|Expected indented block/i.test(e.message)
-  }
-}
-
 function repl() {
   const { Interpreter } = require('./src/interpreter')
   const interp = new Interpreter()
 
-  console.log('Welcome to Trip REPL. Type exit to quit.')
-  console.log('  Multi-line blocks: end with a blank line to execute.\n')
+  console.log('Welcome to Trip REPL. Type exit to quit.\n')
 
+  // Use raw stdin instead of readline to avoid pkg issues
+  process.stdout.write('>>> ')
   process.stdin.setEncoding('utf8')
   process.stdin.resume()
 
-  let stdinBuf   = ''
-  let multiLines = []   // lines collected for the current block
-  let inBlock    = false
-
-  function prompt() {
-    process.stdout.write(inBlock ? '... ' : '>>> ')
-  }
-
-  function executeBlock() {
-    const source = multiLines.join('\n')
-    multiLines = []
-    inBlock    = false
-    if (!source.trim()) { prompt(); return }
-    try {
-      const tokens = new Lexer(source).tokenize()
-      const ast    = new Parser(tokens).parse()
-      const result = interp.run(ast)
-      if (result !== null && result !== undefined) console.log('=>', result)
-    } catch (e) {
-      console.error('\x1b[31m' + e.message + '\x1b[0m')
-    }
-    prompt()
-  }
-
-  prompt()
-
+  let buffer = ''
   process.stdin.on('data', (chunk) => {
-    stdinBuf += chunk
-    const lines = stdinBuf.split('\n')
-    stdinBuf = lines.pop() // keep any incomplete trailing chunk
+    buffer += chunk
+    const lines = buffer.split('\n')
+    buffer = lines.pop() // keep incomplete line in buffer
 
     for (const raw of lines) {
       const line = raw.replace(/\r/g, '').trimEnd()
-
-      // 'exit' always quits, even mid-block
       if (line.trim() === 'exit') {
         console.log('Bye!')
         process.exit(0)
       }
-
-      if (inBlock) {
-        // Blank line = "I'm done typing the block, run it"
-        if (line.trim() === '') {
-          executeBlock()
-        } else {
-          multiLines.push(line)
-          // If the parser is satisfied already (one-liner body), run immediately
-          if (!isIncomplete(multiLines.join('\n'))) {
-            executeBlock()
-          } else {
-            prompt()
-          }
-        }
-      } else {
-        if (line.trim() === '') { prompt(); continue }
-
-        multiLines.push(line)
-
-        // A line ending with ':' (ignoring inline comments) opens a block
-        const stripped = line.replace(/#.*$/, '').trimEnd()
-        if (stripped.endsWith(':')) {
-          inBlock = true
-          prompt()
-        } else {
-          // Plain single-line statement — execute right away
-          executeBlock()
-        }
+      if (line.trim() === '') {
+        process.stdout.write('>>> ')
+        continue
       }
+      try {
+        const tokens = new Lexer(line).tokenize()
+        const ast    = new Parser(tokens).parse()
+        const result = interp.run(ast)
+        if (result !== null && result !== undefined) console.log('=>', result)
+      } catch (e) {
+        console.error('\x1b[31m' + e.message + '\x1b[0m')
+      }
+      process.stdout.write('>>> ')
     }
   })
 }
