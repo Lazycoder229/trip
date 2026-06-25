@@ -1,0 +1,14 @@
+{
+  "name": "trip",
+  "version": "1.0.0",
+  "description": "Trip programming language runtime",
+  "main": "trip.js",
+  "bin": {
+    "trip": "trip.js"
+  },
+  "pkg": {
+    "scripts": "src/**/*.js",
+    "targets": ["node18-win-x64", "node18-linux-x64"],
+    "outputPath": "dist"
+  }
+}
