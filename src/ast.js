@@ -89,7 +89,18 @@ class BreakStatement    { constructor() { this.type = 'BreakStatement' } }
 class ContinueStatement { constructor() { this.type = 'ContinueStatement' } }
 class ExprStatement     { constructor(expr) { this.type = 'ExprStatement'; this.expr = expr } }
 class ImportStatement   { constructor(path) { this.type = 'ImportStatement'; this.path = path } }
-
+class ThrowStatement {
+  constructor(value) { this.type = 'ThrowStatement'; this.value = value }
+}
+class TryCatchStatement {
+  constructor(tryBlock, catchVar, catchBlock, finallyBlock) {
+    this.type = 'TryCatchStatement'
+    this.tryBlock     = tryBlock
+    this.catchVar     = catchVar
+    this.catchBlock   = catchBlock
+    this.finallyBlock = finallyBlock
+  }
+}
 module.exports = {
   NumberLiteral, StringLiteral, BoolLiteral, NullLiteral, Identifier,
   BinaryExpr, UnaryExpr, AssignExpr, MemberExpr, IndexExpr, CallExpr,
@@ -97,4 +108,5 @@ module.exports = {
   Program, Block, LetStatement, FnDeclaration, ClassDeclaration,
   ReturnStatement, IfStatement, WhileStatement, ForStatement,
   BreakStatement, ContinueStatement, ExprStatement, ImportStatement,
+   ThrowStatement, TryCatchStatement,
 }

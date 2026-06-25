@@ -443,6 +443,11 @@ class Interpreter {
     const compute = (old) => {
       if (op === '+=') return typeof old === 'string' ? old + this.stringify(value) : old + value
       if (op === '-=') return old - value
+       if (op === '*=') return old * value   // ← idagdag
+      if (op === '/=') {                    // ← idagdag
+        if (value === 0) throw new Error('[Runtime]: Division by zero')
+        return old / value
+      }
       return value
     }
 
