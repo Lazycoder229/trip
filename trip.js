@@ -34,26 +34,12 @@ function run(source, filePath = process.cwd()) {
 }
 
 // ─── REPL ──────────────────────────────────────────────────────────────────
-// Determines whether the accumulated source is still incomplete (i.e. the
-// parser is waiting for a block body).  Used to decide if we should keep
-// collecting lines or execute immediately.
-function isIncomplete(source) {
-  try {
-    const tokens = new Lexer(source).tokenize()
-    new Parser(tokens).parse()
-    return false // parsed cleanly → complete
-  } catch (e) {
-    // These are the parser messages emitted when a block body is missing.
-    return /got 'EOF'|Expected indented block/i.test(e.message)
-  }
-}
-
 function repl() {
   const { Interpreter } = require('./src/interpreter')
   const interp = new Interpreter()
 
   console.log('Welcome to Trip REPL. Type exit to quit.')
-  console.log('  Multi-line blocks: end with a blank line to execute.\n')
+  console.log('  Multi-line blocks: finish with a blank line to run.\n')
 
   process.stdin.setEncoding('utf8')
   process.stdin.resume()
@@ -99,24 +85,20 @@ function repl() {
       }
 
       if (inBlock) {
-        // Blank line = "I'm done typing the block, run it"
+        // Blank line = done typing the block, execute it now
         if (line.trim() === '') {
           executeBlock()
         } else {
           multiLines.push(line)
-          // If the parser is satisfied already (one-liner body), run immediately
-          if (!isIncomplete(multiLines.join('\n'))) {
-            executeBlock()
-          } else {
-            prompt()
-          }
+          prompt()
         }
       } else {
         if (line.trim() === '') { prompt(); continue }
 
         multiLines.push(line)
 
-        // A line ending with ':' (ignoring inline comments) opens a block
+        // A line ending with ':' (ignoring inline comments) opens a block —
+        // switch to '...' mode and wait for lines + blank line to terminate
         const stripped = line.replace(/#.*$/, '').trimEnd()
         if (stripped.endsWith(':')) {
           inBlock = true
