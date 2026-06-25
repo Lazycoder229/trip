@@ -78,6 +78,8 @@ class Parser {
     if (tok.type === TT.BREAK)    { this.advance(); this.match(TT.NEWLINE); return new AST.BreakStatement() }
     if (tok.type === TT.CONTINUE) { this.advance(); this.match(TT.NEWLINE); return new AST.ContinueStatement() }
     if (tok.type === TT.IMPORT)   return this.parseImport()
+    if (tok.type === TT.TRY)      return this.parseTryCatch()
+    if (tok.type === TT.THROW)    return this.parseThrow()
 
     return this.parseExprStatement()
   }
@@ -124,8 +126,30 @@ class Parser {
       superclass = this.expect(TT.IDENT, 'superclass name').value
       this.expect(TT.RPAREN, "')'")
     }
-    const body = this.parseBlock()
+    const body = this.parseClassBlock()
     return new AST.ClassDeclaration(name, superclass, body)
+  }
+
+  parseClassBlock() {
+    this.expect(TT.COLON, "':' before class body")
+    this.expect(TT.NEWLINE, "newline after ':'")
+    this.expect(TT.INDENT, 'indented class body')
+    const stmts = []
+    this.skipNewlines()
+    while (!this.check(TT.DEDENT) && !this.isEOF()) {
+      // support 'static fn method(...):'
+      if (this.check(TT.STATIC)) {
+        this.advance()
+        const fn = this.parseFn()
+        fn.isStatic = true
+        stmts.push(fn)
+      } else {
+        stmts.push(this.parseStatement())
+      }
+      this.skipNewlines()
+    }
+    this.match(TT.DEDENT)
+    return new AST.Block(stmts)
   }
 
   parseReturn() {
@@ -184,6 +208,42 @@ class Parser {
     return new AST.ImportStatement(path)
   }
 
+  parseThrow() {
+    this.advance() // throw
+    const value = this.parseExpr()
+    this.match(TT.NEWLINE)
+    return new AST.ThrowStatement(value)
+  }
+
+  parseTryCatch() {
+    this.advance() // try
+    const tryBlock = this.parseBlock()
+
+    let catchVar   = null
+    let catchBlock = null
+    let finallyBlock = null
+
+    this.skipNewlines()
+    if (this.check(TT.CATCH)) {
+      this.advance() // catch
+      // optional: catch(e)
+      if (this.check(TT.LPAREN)) {
+        this.advance()
+        catchVar = this.expect(TT.IDENT, 'error variable name').value
+        this.expect(TT.RPAREN, "')'")
+      }
+      catchBlock = this.parseBlock()
+      this.skipNewlines()
+    }
+
+    if (this.check(TT.FINALLY)) {
+      this.advance() // finally
+      finallyBlock = this.parseBlock()
+    }
+
+    return new AST.TryCatchStatement(tryBlock, catchVar, catchBlock, finallyBlock)
+  }
+
   parseExprStatement() {
     const expr = this.parseExpr()
     this.match(TT.NEWLINE)
@@ -208,7 +268,16 @@ class Parser {
       this.advance()
       return new AST.AssignExpr(left, this.parseAssign(), '-=')
     }
-    return left
+   
+    if (this.check(TT.STAR_EQ)) {
+      this.advance()
+      return new AST.AssignExpr(left, this.parseAssign(), '*=')
+    }
+    if (this.check(TT.SLASH_EQ)) {
+      this.advance()
+      return new AST.AssignExpr(left, this.parseAssign(), '/=')
+    }
+        return left
   }
 
   parseOr() {
@@ -314,7 +383,7 @@ class Parser {
     if (tok.type === TT.BOOL)    { this.advance(); return new AST.BoolLiteral(tok.value) }
     if (tok.type === TT.NULL)    { this.advance(); return new AST.NullLiteral() }
 
-    if (tok.type === TT.IDENT || tok.type === TT.SELF) {
+    if (tok.type === TT.IDENT || tok.type === TT.SELF || tok.type === TT.SUPER) {
       this.advance()
       return new AST.Identifier(tok.value, tok.line)
     }

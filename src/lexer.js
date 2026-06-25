@@ -14,6 +14,7 @@ const TT = {
   // Operators
   PLUS: '+', MINUS: '-', STAR: '*', SLASH: '/', PERCENT: '%',
   EQ: '==', NEQ: '!=', LT: '<', GT: '>', LTE: '<=', GTE: '>=',
+  STAR_EQ: '*=', SLASH_EQ: '/=',
   AND: 'AND', OR: 'OR', NOT: 'NOT',
   ASSIGN: '=', PLUS_EQ: '+=', MINUS_EQ: '-=',
 
@@ -25,12 +26,16 @@ const TT = {
   // Structure
   NEWLINE: 'NEWLINE', INDENT: 'INDENT', DEDENT: 'DEDENT',
   EOF: 'EOF',
+
+   STATIC: 'STATIC', SUPER: 'SUPER',
+  TRY: 'TRY', CATCH: 'CATCH', FINALLY: 'FINALLY', THROW: 'THROW',
 }
 
 const KEYWORDS = new Set([
   'let','fn','return','if','else','elif','while','for','in',
-  'class','self','new','import','break','continue',
+  'class','self','super','new','import','break','continue',
   'true','false','null','and','or','not',
+  'static','try','catch','finally','throw',
 ])
 
 class Token {
@@ -104,9 +109,44 @@ class Lexer {
     this.tokens.push(new Token(TT.EOF, null, this.line))
     return this.tokens
   }
-
+processTripleQuotes(source) {
+  let result = ''
+  let i = 0
+  while (i < source.length) {
+    // Detect opening """
+    if (source[i] === '"' && source[i+1] === '"' && source[i+2] === '"') {
+      i += 3 // skip opening """
+      let str = ''
+      while (i < source.length) {
+        // Detect closing """
+        if (source[i] === '"' && source[i+1] === '"' && source[i+2] === '"') {
+          i += 3
+          break
+        }
+        // Convert real newlines to \n escape so lexLine sees one flat string
+        if (source[i] === '\n') {
+          str += '\\n'
+          i++
+        } else if (source[i] === '"') {
+          // single quote inside triple string — escape it
+          str += '\\"'
+          i++
+        } else {
+          str += source[i++]
+        }
+      }
+      // Emit as a regular "..." token the line lexer already understands
+      result += `"${str}"`
+    } else {
+      result += source[i++]
+    }
+  }
+  return result
+}
   lexLine() {
     const src = this.lineSource
+     const processed = this.processTripleQuotes(this.source)
+  const lines = processed.split('\n')
     let i = 0
 
     while (i < src.length) {
@@ -166,6 +206,7 @@ class Lexer {
       const twoMap = {
         '==': TT.EQ, '!=': TT.NEQ, '<=': TT.LTE, '>=': TT.GTE,
         '->': TT.ARROW, '+=': TT.PLUS_EQ, '-=': TT.MINUS_EQ,
+        '*=': TT.STAR_EQ, '/=': TT.SLASH_EQ,
       }
       if (twoMap[two]) {
         this.tokens.push(new Token(twoMap[two], two, this.line))

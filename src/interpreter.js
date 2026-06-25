@@ -2,11 +2,11 @@ const { Environment } = require('./environment')
 const path = require('path')
 const fs   = require('fs')
 
-
 // ─── Control flow signals ──────────────────────────────────────────────────
-class ReturnSignal  { constructor(value) { this.value = value } }
-class BreakSignal   {}
+class ReturnSignal   { constructor(value) { this.value = value } }
+class BreakSignal    {}
 class ContinueSignal {}
+class ThrowSignal    { constructor(value) { this.value = value } }
 
 // ─── Runtime Types ─────────────────────────────────────────────────────────
 class LangFunction {
@@ -20,16 +20,23 @@ class LangFunction {
 }
 
 class LangClass {
-  constructor(name, superclass, methods) {
+  constructor(name, superclass, methods, statics) {
     this.name       = name
     this.superclass = superclass
-    this.methods    = methods   // Map<string, LangFunction>
+    this.methods    = methods
+    this.statics    = statics
   }
   toString() { return `<class ${this.name}>` }
 
   findMethod(name) {
     if (this.methods.has(name)) return this.methods.get(name)
     if (this.superclass) return this.superclass.findMethod(name)
+    return null
+  }
+
+  findStatic(name) {
+    if (this.statics.has(name)) return this.statics.get(name)
+    if (this.superclass) return this.superclass.findStatic(name)
     return null
   }
 }
@@ -39,12 +46,7 @@ class LangInstance {
     this.klass  = klass
     this.fields = new Map()
   }
-  toString() {
-    if (this.fields.has('__str__')) {
-      // handled at call site
-    }
-    return `<${this.klass.name} instance>`
-  }
+  toString() { return `<${this.klass.name} instance>` }
   get(name) {
     if (this.fields.has(name)) return this.fields.get(name)
     const method = this.klass.findMethod(name)
@@ -53,7 +55,6 @@ class LangInstance {
   }
   set(name, value) { this.fields.set(name, value); return value }
   bindMethod(fn) {
-    // Return a new function with 'self' pre-bound in its closure
     const env = fn.closure.child()
     env.define('self', this)
     return new LangFunction(fn.name, fn.params, fn.body, env)
@@ -61,104 +62,98 @@ class LangInstance {
 }
 
 // ─── Standard Library ──────────────────────────────────────────────────────
-function buildStdLib() {
+// NOTE: accepts the interpreter instance so print/str can invoke __str__
+function buildStdLib(interp) {
   const env = new Environment()
 
-  const native = (fn) => fn
-
- env.define('print',   native((...args) => { process.stdout.write(args.map(stringify).join(' ') + '\n'); return null }))
-env.define('println', native((...args) => { process.stdout.write(args.map(stringify).join('') + '\n'); return null }))
-  env.define('input',   native(() => { return '' })) // sync input not easy in Node; placeholder
-  env.define('str',     native((v) => stringify(v)))
-  env.define('num',     native((v) => parseFloat(v)))
-  env.define('int',     native((v) => Math.trunc(typeof v === 'string' ? parseFloat(v) : v)))
-  env.define('float',   native((v) => parseFloat(v)))
-  env.define('bool',    native((v) => !!v))
-  env.define('len',     native((v) => {
-    if (Array.isArray(v)) return v.length
+  env.define('print',   (...args) => { process.stdout.write(args.map(v => interp.stringify(v)).join(' ') + '\n'); return null })
+  env.define('println', (...args) => { process.stdout.write(args.map(v => interp.stringify(v)).join('') + '\n'); return null })
+  env.define('input',   () => '')
+  env.define('str',     (v) => interp.stringify(v))
+  env.define('num',     (v) => parseFloat(v))
+  env.define('int',     (v) => Math.trunc(typeof v === 'string' ? parseFloat(v) : v))
+  env.define('float',   (v) => parseFloat(v))
+  env.define('bool',    (v) => !!v)
+  env.define('len', (v) => {
+    if (Array.isArray(v))    return v.length
     if (typeof v === 'string') return v.length
-    if (v instanceof Map) return v.size
+    if (v instanceof Map)    return v.size
     throw new Error('[Runtime]: len() requires string, array, or dict')
-  }))
-  env.define('type',    native((v) => {
-    if (v === null)            return 'null'
-    if (typeof v === 'number') return Number.isInteger(v) ? 'int' : 'float'
-    if (typeof v === 'string') return 'string'
-    if (typeof v === 'boolean') return 'bool'
-    if (Array.isArray(v))      return 'array'
-    if (v instanceof Map)      return 'dict'
+  })
+  env.define('type', (v) => {
+    if (v === null)                return 'null'
+    if (typeof v === 'number')     return Number.isInteger(v) ? 'int' : 'float'
+    if (typeof v === 'string')     return 'string'
+    if (typeof v === 'boolean')    return 'bool'
+    if (Array.isArray(v))          return 'array'
+    if (v instanceof Map)          return 'dict'
     if (v instanceof LangFunction) return 'function'
     if (v instanceof LangClass)    return 'class'
     if (v instanceof LangInstance) return v.klass.name
     return 'unknown'
-  }))
-  // PERF FIX: range() now returns a lazy generator instead of a pre-built Array.
-  // range(10000) previously allocated a 10 000-element JS array before the first
-  // iteration ran.  The lazy version uses a generator that yields one value at a
-  // time, so memory stays O(1) regardless of the range size.
-  // The ForStatement already handles non-Array iterables via [...iterable], so
-  // existing code is unaffected; and you can still index/slice a range by
-  // converting: let arr = [range(n)]  (spread).
-  env.define('range', native(function(start, end, step) {
+  })
+  env.define('range', (start, end, step) => {
     if (end === undefined) { end = start; start = 0 }
     if (step === undefined) step = 1
-    // Return a generator so large ranges don't allocate a huge array up front
     return (function*() {
       for (let i = start; i < end; i += step) yield i
     })()
-  }))
- 
-  env.define('memory', native(() => {
-      for (const [k, v] of interp.globals.vars) {
-          console.log(`${k} = ${stringify(v)} (${typeof v})`)
-      }
-      return null
-  }))
-  env.define('push',   native((arr, val) => { arr.push(val); return arr }))
-  env.define('pop',    native((arr) => arr.pop()))
-  env.define('keys',   native((d) => [...d.keys()]))
-  env.define('values', native((d) => [...d.values()]))
-  env.define('split',  native((str, sep = '') => str.split(sep)))
-  env.define('join',   native((arr, sep = '') => arr.join(sep)))
-  env.define('upper',  native((s) => s.toUpperCase()))
-  env.define('lower',  native((s) => s.toLowerCase()))
-  env.define('trim',   native((s) => s.trim()))
-  env.define('floor',  native((n) => Math.floor(n)))
-  env.define('ceil',   native((n) => Math.ceil(n)))
-  env.define('round',  native((n) => Math.round(n)))
-  env.define('abs',    native((n) => Math.abs(n)))
-  env.define('sqrt',   native((n) => Math.sqrt(n)))
-  env.define('random', native(() => Math.random()))
-  env.define('max',    native((...args) => Math.max(...args)))
-  env.define('min',    native((...args) => Math.min(...args)))
+  })
+  // FIX: 'memory' now correctly references interp instead of an undefined variable
+  env.define('memory', () => {
+    for (const [k, v] of interp.globals.vars)
+      console.log(`${k} = ${interp.stringify(v)} (${typeof v})`)
+    return null
+  })
+  env.define('push',   (arr, val) => { arr.push(val); return arr })
+  env.define('pop',    (arr) => arr.pop())
+  env.define('keys',   (d) => [...d.keys()])
+  env.define('values', (d) => [...d.values()])
+  env.define('split',  (str, sep = '') => str.split(sep))
+  env.define('join',   (arr, sep = '') => arr.join(sep))
+  env.define('upper',  (s) => s.toUpperCase())
+  env.define('lower',  (s) => s.toLowerCase())
+  env.define('trim',   (s) => s.trim())
+  env.define('floor',  (n) => Math.floor(n))
+  env.define('ceil',   (n) => Math.ceil(n))
+  env.define('round',  (n) => Math.round(n))
+  env.define('abs',    (n) => Math.abs(n))
+  env.define('sqrt',   (n) => Math.sqrt(n))
+  env.define('random', () => Math.random())
+  env.define('max',    (...args) => Math.max(...args))
+  env.define('min',    (...args) => Math.min(...args))
 
   return env
-}
-
-function stringify(v) {
-  if (v === null)             return 'null'
-  if (typeof v === 'boolean') return v ? 'true' : 'false'
-  if (Array.isArray(v))       return '[' + v.map(stringify).join(', ') + ']'
-  if (v instanceof Map) {
-    const pairs = [...v.entries()].map(([k, val]) => `${stringify(k)}: ${stringify(val)}`)
-    return '{' + pairs.join(', ') + '}'
-  }
-  if (v instanceof LangInstance) {
-    const toStr = v.klass.findMethod('__str__')
-    if (toStr) {
-      const bound = v.bindMethod(toStr)
-      // Can't call interpreter here; fall back
-    }
-    return v.toString()
-  }
-  return String(v)
 }
 
 // ─── Interpreter ───────────────────────────────────────────────────────────
 class Interpreter {
   constructor(baseDir = process.cwd()) {
-    this.globals = buildStdLib()
+    // FIX: pass 'this' so stdlib closures can call this.stringify()
+    this.globals = buildStdLib(this)
     this.baseDir = baseDir
+  }
+
+  // FIX: stringify is now an instance method so it can call __str__ via callFunction
+  stringify(v) {
+    if (v === null)             return 'null'
+    if (typeof v === 'boolean') return v ? 'true' : 'false'
+    if (Array.isArray(v))       return '[' + v.map(x => this.stringify(x)).join(', ') + ']'
+    if (v instanceof Map) {
+      const pairs = [...v.entries()].map(([k, val]) => `${this.stringify(k)}: ${this.stringify(val)}`)
+      return '{' + pairs.join(', ') + '}'
+    }
+    if (v instanceof LangInstance) {
+      const toStr = v.klass.findMethod('__str__')
+      if (toStr) {
+        // FIX: we can now actually invoke __str__ since we're inside the interpreter
+        const bound = v.bindMethod(toStr)
+        const result = this.callFunction(bound, [])
+        return typeof result === 'string' ? result : String(result)
+      }
+      return v.toString()
+    }
+    return String(v)
   }
 
   run(program) {
@@ -169,9 +164,10 @@ class Interpreter {
     let result = null
     for (const stmt of stmts) {
       result = this.exec(stmt, env)
-      if (result instanceof ReturnSignal) return result
-      if (result instanceof BreakSignal)  return result
+      if (result instanceof ReturnSignal)   return result
+      if (result instanceof BreakSignal)    return result
       if (result instanceof ContinueSignal) return result
+      if (result instanceof ThrowSignal)    return result
     }
     return result
   }
@@ -205,12 +201,15 @@ class Interpreter {
             throw new Error(`[Runtime]: '${node.superclass}' is not a class`)
         }
         const methods = new Map()
+        const statics = new Map()
         for (const stmt of node.body.body) {
           if (stmt.type === 'FnDeclaration') {
-            methods.set(stmt.name, new LangFunction(stmt.name, stmt.params, stmt.body, env))
+            const fn = new LangFunction(stmt.name, stmt.params, stmt.body, env)
+            if (stmt.isStatic) statics.set(stmt.name, fn)
+            else               methods.set(stmt.name, fn)
           }
         }
-        const klass = new LangClass(node.name, superclass, methods)
+        const klass = new LangClass(node.name, superclass, methods, statics)
         env.define(node.name, klass)
         return null
       }
@@ -222,8 +221,7 @@ class Interpreter {
 
       case 'IfStatement': {
         if (this.isTruthy(this.eval(node.condition, env))) {
-          const scope = env.child()
-          return this.execBlock(node.consequent.body, scope)
+          return this.execBlock(node.consequent.body, env.child())
         }
         for (const alt of node.alternates) {
           if (this.isTruthy(this.eval(alt.condition, env))) {
@@ -235,11 +233,6 @@ class Interpreter {
       }
 
       case 'WhileStatement': {
-        // PERF FIX: reuse a single child scope per loop instead of allocating
-        // a new Environment on every iteration. For tight loops (10 000+ iters)
-        // this eliminates the GC pressure from thousands of short-lived objects.
-        // We manually clear vars at the top of each pass so inner `let` bindings
-        // don't bleed across iterations — same semantic contract as before.
         const loopScope = env.child()
         while (this.isTruthy(this.eval(node.condition, env))) {
           loopScope.vars.clear()
@@ -247,28 +240,22 @@ class Interpreter {
           if (result instanceof BreakSignal)    break
           if (result instanceof ReturnSignal)   return result
           if (result instanceof ContinueSignal) continue
+          // FIX: propagate throws out of loop bodies
+          if (result instanceof ThrowSignal)    return result
         }
         return null
       }
 
       case 'ForStatement': {
         const iterable = this.eval(node.iterable, env)
-
-        // PERF FIX: iterate generators/iterables directly without materialising
-        // the whole sequence into an Array first (range(10000) is now a generator).
-        // String is special-cased to split into characters; everything else that
-        // has [Symbol.iterator] is walked in-place.
         let iterSource
         if (typeof iterable === 'string') {
-          iterSource = iterable  // for..of on a string yields characters
+          iterSource = iterable
         } else if (iterable && typeof iterable[Symbol.iterator] === 'function') {
-          iterSource = iterable  // Arrays, generators, Maps, Sets …
+          iterSource = iterable
         } else {
           iterSource = []
         }
-
-        // Reuse one scope object per loop — eliminates thousands of short-lived
-        // Environment allocations in tight loops.
         const loopScope = env.child()
         for (const item of iterSource) {
           loopScope.vars.clear()
@@ -277,12 +264,52 @@ class Interpreter {
           if (result instanceof BreakSignal)    break
           if (result instanceof ReturnSignal)   return result
           if (result instanceof ContinueSignal) continue
+          // FIX: propagate throws out of loop bodies
+          if (result instanceof ThrowSignal)    return result
         }
         return null
       }
 
       case 'BreakStatement':    return new BreakSignal()
       case 'ContinueStatement': return new ContinueSignal()
+
+      case 'ThrowStatement': {
+        const value = this.eval(node.value, env)
+        return new ThrowSignal(value)
+      }
+
+      case 'TryCatchStatement': {
+        let result = null
+        let threw  = null
+
+        try {
+          result = this.execBlock(node.tryBlock.body, env.child())
+          // ThrowSignal from execBlock — treat as a caught throw
+          if (result instanceof ThrowSignal) {
+            threw  = result.value
+            result = null
+          }
+        } catch (err) {
+          // Native JS errors (e.g. divide by zero, undefined variable) surface here
+          threw = err.message
+        }
+
+        if (threw !== null && node.catchBlock) {
+          const catchScope = env.child()
+          if (node.catchVar) catchScope.define(node.catchVar, threw)
+          result = this.execBlock(node.catchBlock.body, catchScope)
+        }
+
+        if (node.finallyBlock) {
+          // finally always runs; only hijacks control for return/break
+          const fr = this.execBlock(node.finallyBlock.body, env.child())
+          if (fr instanceof ReturnSignal || fr instanceof BreakSignal) return fr
+          // FIX: a throw inside finally also propagates
+          if (fr instanceof ThrowSignal) return fr
+        }
+
+        return result
+      }
 
       case 'ExprStatement':
         return this.eval(node.expr, env)
@@ -292,14 +319,13 @@ class Interpreter {
         if (!fs.existsSync(filePath))
           throw new Error(`[Runtime]: Cannot import '${node.path}': file not found`)
         const src = fs.readFileSync(filePath, 'utf8')
-        const { Lexer } = require('./lexer')
+        const { Lexer }  = require('./lexer')
         const { Parser } = require('./parser')
         const tokens  = new Lexer(src).tokenize()
         const program = new Parser(tokens).parse()
         const modInterp = new Interpreter(path.dirname(filePath))
         modInterp.globals.parent = this.globals
         modInterp.run(program)
-        // merge module exports back (anything defined at top level)
         for (const [k, v] of modInterp.globals.vars) {
           env.define(k, v)
         }
@@ -336,7 +362,7 @@ class Interpreter {
         const r = this.eval(node.right, env)
         switch (node.op) {
           case '+':   return typeof l === 'string' || typeof r === 'string'
-                        ? stringify(l) + stringify(r) : l + r
+                        ? this.stringify(l) + this.stringify(r) : l + r
           case '-':   return l - r
           case '*':   return l * r
           case '/':   if (r === 0) throw new Error('[Runtime]: Division by zero'); return l / r
@@ -366,18 +392,35 @@ class Interpreter {
       }
 
       case 'MemberExpr': {
+        // FIX: super.method — resolve against superclass, bound to self
+        if (node.object.type === 'Identifier' && node.object.name === 'super') {
+          const selfVal    = env.get('self')
+          const superclass = selfVal.klass.superclass
+          if (!superclass) throw new Error('[Runtime]: No superclass to call')
+          const method = superclass.findMethod(node.property)
+          if (!method) throw new Error(`[Runtime]: Superclass has no method '${node.property}'`)
+          return selfVal.bindMethod(method)
+        }
+
         const obj = this.eval(node.object, env)
+
+        // FIX: static method / property access on a class (ClassName.staticMethod())
+        if (obj instanceof LangClass) {
+          const staticFn = obj.findStatic(node.property)
+          if (staticFn) return staticFn
+          throw new Error(`[Runtime]: Class '${obj.name}' has no static member '${node.property}'`)
+        }
+
         if (obj instanceof LangInstance) return obj.get(node.property)
         if (obj instanceof Map)          return obj.get(node.property) ?? null
-        // Built-in array/string methods
         return this.getMemberBuiltin(obj, node.property)
       }
 
       case 'IndexExpr': {
         const obj = this.eval(node.object, env)
         const idx = this.eval(node.index, env)
-        if (Array.isArray(obj)) return obj[idx] ?? null
-        if (obj instanceof Map) return obj.get(idx) ?? null
+        if (Array.isArray(obj))      return obj[idx] ?? null
+        if (obj instanceof Map)      return obj.get(idx) ?? null
         if (typeof obj === 'string') return obj[idx] ?? null
         throw new Error('[Runtime]: Index operation on non-indexable type')
       }
@@ -398,18 +441,12 @@ class Interpreter {
 
   assign(target, value, op, env) {
     const compute = (old) => {
-      if (op === '+=') return typeof old === 'string' ? old + stringify(value) : old + value
+      if (op === '+=') return typeof old === 'string' ? old + this.stringify(value) : old + value
       if (op === '-=') return old - value
       return value
     }
 
     if (target.type === 'Identifier') {
-      // PERF: updateIn() does find+write in a single chain walk.
-      // The old path was: has()[walk] + get()[walk] + set()[walk] = 3 walks per assignment.
-      // Now:
-      //   '='  → updateIn() = 1 walk (find+write together), or define() if new
-      //   '+=' → get()[walk] + updateIn()[walk] = 2 walks (need old value first)
-      //   '-=' → same as +=
       if (op === '=') {
         if (env.has(target.name)) {
           env.updateIn(target.name, value)
@@ -454,23 +491,24 @@ class Interpreter {
   }
 
   callFunction(callee, args, line) {
-    // Native JS function
     if (typeof callee === 'function') return callee(...args) ?? null
 
-    // User-defined function
     if (callee instanceof LangFunction) {
       const scope = callee.closure.child()
-      // Skip 'self' in the param list — it's already pre-bound in the closure
-      // by bindMethod(). If we re-bind it here it would overwrite self with null
-      // (since the caller doesn't pass self as an explicit argument).
       const bindableParams = callee.params.filter(p => p !== 'self')
       bindableParams.forEach((p, i) => scope.define(p, args[i] ?? null))
       const result = this.execBlock(callee.body.body, scope)
       if (result instanceof ReturnSignal) return result.value
+      // FIX: re-surface ThrowSignal as a real JS error so the JS try/catch
+      // in TryCatchStatement can intercept it, AND so uncaught throws
+      // produce a proper error message instead of silently returning null
+      if (result instanceof ThrowSignal) {
+        const msg = this.stringify(result.value)
+        throw new Error(msg)
+      }
       return null
     }
 
-    // Class instantiation
     if (callee instanceof LangClass) {
       const instance = new LangInstance(callee)
       const init = callee.findMethod('init')
@@ -481,37 +519,38 @@ class Interpreter {
       return instance
     }
 
-    throw new Error(`[Runtime] Line ${line}: '${stringify(callee)}' is not callable`)
+    throw new Error(`[Runtime] Line ${line}: '${this.stringify(callee)}' is not callable`)
   }
 
   getMemberBuiltin(obj, prop) {
     if (Array.isArray(obj)) {
       const methods = {
-        push:    (...a) => { obj.push(...a); return obj },
-        pop:     ()    => obj.pop(),
-        length:  obj.length,
-        map:     (fn)  => obj.map(v => this.callFunction(fn, [v])),
-        filter:  (fn)  => obj.filter(v => this.isTruthy(this.callFunction(fn, [v]))),
-        forEach: (fn)  => { obj.forEach(v => this.callFunction(fn, [v])); return null },
-        join:    (sep) => obj.join(sep ?? ','),
-        reverse: ()    => [...obj].reverse(),
-        includes:(v)   => obj.includes(v),
-        indexOf: (v)   => obj.indexOf(v),
+        push:     (...a) => { obj.push(...a); return obj },
+        pop:      ()     => obj.pop(),
+        length:   obj.length,
+        map:      (fn)   => obj.map(v => this.callFunction(fn, [v])),
+        filter:   (fn)   => obj.filter(v => this.isTruthy(this.callFunction(fn, [v]))),
+        forEach:  (fn)   => { obj.forEach(v => this.callFunction(fn, [v])); return null },
+        join:     (sep)  => obj.join(sep ?? ','),
+        reverse:  ()     => [...obj].reverse(),
+        includes: (v)    => obj.includes(v),
+        indexOf:  (v)    => obj.indexOf(v),
+        slice:    (a, b) => obj.slice(a, b),
       }
       return methods[prop] ?? null
     }
     if (typeof obj === 'string') {
       const methods = {
-        length:    obj.length,
-        upper:     () => obj.toUpperCase(),
-        lower:     () => obj.toLowerCase(),
-        trim:      () => obj.trim(),
-        split:     (sep) => obj.split(sep ?? ''),
-        includes:  (s)   => obj.includes(s),
-        startsWith:(s)   => obj.startsWith(s),
-        endsWith:  (s)   => obj.endsWith(s),
-        replace:   (a,b) => obj.replace(a, b),
-        indexOf:   (s)   => obj.indexOf(s),
+        length:     obj.length,
+        upper:      () => obj.toUpperCase(),
+        lower:      () => obj.toLowerCase(),
+        trim:       () => obj.trim(),
+        split:      (sep) => obj.split(sep ?? ''),
+        includes:   (s)   => obj.includes(s),
+        startsWith: (s)   => obj.startsWith(s),
+        endsWith:   (s)   => obj.endsWith(s),
+        replace:    (a,b) => obj.replace(a, b),
+        indexOf:    (s)   => obj.indexOf(s),
       }
       return methods[prop] ?? null
     }
@@ -519,12 +558,12 @@ class Interpreter {
   }
 
   isTruthy(v) {
-    if (v === null || v === false) return false
-    if (typeof v === 'number' && v === 0) return false
-    if (typeof v === 'string' && v === '') return false
-    if (Array.isArray(v) && v.length === 0) return false
+    if (v === null || v === false)                    return false
+    if (typeof v === 'number' && v === 0)             return false
+    if (typeof v === 'string' && v === '')            return false
+    if (Array.isArray(v) && v.length === 0)           return false
     return true
   }
 }
 
-module.exports = { Interpreter, LangFunction, LangClass, LangInstance, stringify, buildStdLib }
+module.exports = { Interpreter, LangFunction, LangClass, LangInstance, buildStdLib }
