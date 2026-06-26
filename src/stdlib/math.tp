@@ -1,0 +1,72 @@
+# stdlib/math — Trip math module
+# Accessible via: import "stdlib/math"
+# All functions added to the calling scope.
+
+fn factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+fn gcd(a, b):
+    while b != 0:
+        let t = b
+        b = a % b
+        a = t
+    return a
+
+fn lcm(a, b):
+    return abs(a * b) / gcd(a, b)
+
+fn isPrime(n):
+    if n < 2:
+        return false
+    let i = 2
+    while i * i <= n:
+        if n % i == 0:
+            return false
+        i = i + 1
+    return true
+
+fn clamp(val, lo, hi):
+    if val < lo: return lo
+    if val > hi: return hi
+    return val
+
+fn lerp(a, b, t):
+    return a + (b - a) * t
+
+fn sign(n):
+    if n > 0: return 1
+    if n < 0: return -1
+    return 0
+
+fn hypot(x, y):
+    return sqrt(x * x + y * y)
+
+fn degrees(rad):
+    return rad * 180 / PI
+
+fn radians(deg):
+    return deg * PI / 180
+
+fn sum(arr):
+    let total = 0
+    for x in arr:
+        total = total + x
+    return total
+
+fn product(arr):
+    let total = 1
+    for x in arr:
+        total = total * x
+    return total
+
+fn mean(arr):
+    return sum(arr) / len(arr)
+
+fn median(arr):
+    let s = sorted(arr)
+    let n = len(s)
+    if n % 2 == 0:
+        return (s[n / 2 - 1] + s[n / 2]) / 2
+    return s[floor(n / 2)]

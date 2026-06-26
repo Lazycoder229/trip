@@ -1,0 +1,97 @@
+# stdlib/array — Trip array utilities
+# import "stdlib/array"
+
+fn first(arr):
+    if len(arr) == 0: return null
+    return arr[0]
+
+fn last(arr):
+    if len(arr) == 0: return null
+    return arr[len(arr) - 1]
+
+fn flatten(arr):
+    let result = []
+    for item in arr:
+        if type(item) == "array":
+            for x in item:
+                push(result, x)
+        else:
+            push(result, item)
+    return result
+
+fn unique(arr):
+    let seen = {}
+    let result = []
+    for item in arr:
+        if not (item in seen):
+            seen[item] = true
+            push(result, item)
+    return result
+
+fn chunk(arr, size):
+    let result = []
+    let i = 0
+    while i < len(arr):
+        push(result, arr.slice(i, i + size))
+        i = i + size
+    return result
+
+fn compact(arr):
+    return arr.filter(fn(x): return x != null and x != false and x != 0 and x != "")
+
+fn groupBy(arr, keyFn):
+    let groups = {}
+    for item in arr:
+        let k = keyFn(item)
+        if not (k in groups):
+            groups[k] = []
+        push(groups[k], item)
+    return groups
+
+fn countBy(arr, keyFn):
+    let counts = {}
+    for item in arr:
+        let k = keyFn(item)
+        if k in counts:
+            counts[k] = counts[k] + 1
+        else:
+            counts[k] = 1
+    return counts
+
+fn sum(arr):
+    let total = 0
+    for x in arr:
+        total = total + x
+    return total
+
+fn product(arr):
+    let total = 1
+    for x in arr:
+        total = total * x
+    return total
+
+fn includes(arr, item):
+    return arr.includes(item)
+
+fn indexOf(arr, item):
+    return arr.indexOf(item)
+
+fn take(arr, n):
+    return arr.slice(0, n)
+
+fn drop(arr, n):
+    return arr.slice(n, len(arr))
+
+fn zip(a, b):
+    let result = []
+    let i = 0
+    while i < len(a) and i < len(b):
+        push(result, [a[i], b[i]])
+        i = i + 1
+    return result
+
+fn rotate(arr, n):
+    let l = len(arr)
+    if l == 0: return arr
+    let r = n % l
+    return arr.slice(r, l) + arr.slice(0, r)

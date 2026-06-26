@@ -1,22 +1,28 @@
 // ─── Token Types ───────────────────────────────────────────────────────────
+
 const TT = {
   // Literals
   NUMBER: 'NUMBER', STRING: 'STRING', BOOL: 'BOOL', NULL: 'NULL',
   IDENT:  'IDENT',
+  FSTRING: 'FSTRING', // f"Hello {name}" — array of parts
 
   // Keywords
-  LET: 'LET', FN: 'FN', RETURN: 'RETURN',
+  LET: 'LET', CONST: 'CONST', FN: 'FN', RETURN: 'RETURN',
   IF: 'IF', ELSE: 'ELSE', ELIF: 'ELIF',
   WHILE: 'WHILE', FOR: 'FOR', IN: 'IN',
   CLASS: 'CLASS', SELF: 'SELF', NEW: 'NEW',
   IMPORT: 'IMPORT', BREAK: 'BREAK', CONTINUE: 'CONTINUE',
+  IS: 'IS',
 
   // Operators
   PLUS: '+', MINUS: '-', STAR: '*', SLASH: '/', PERCENT: '%',
+  STAR_STAR: '**',                       // exponentiation
   EQ: '==', NEQ: '!=', LT: '<', GT: '>', LTE: '<=', GTE: '>=',
   STAR_EQ: '*=', SLASH_EQ: '/=',
   AND: 'AND', OR: 'OR', NOT: 'NOT',
   ASSIGN: '=', PLUS_EQ: '+=', MINUS_EQ: '-=',
+  PLUS_PLUS: '++', MINUS_MINUS: '--',   // increment / decrement
+  QUESTION_QUESTION: '??',               // null coalescing
 
   // Delimiters
   LPAREN: '(', RPAREN: ')', LBRACE: '{', RBRACE: '}',
@@ -27,15 +33,22 @@ const TT = {
   NEWLINE: 'NEWLINE', INDENT: 'INDENT', DEDENT: 'DEDENT',
   EOF: 'EOF',
 
-   STATIC: 'STATIC', SUPER: 'SUPER',
+  STATIC: 'STATIC', SUPER: 'SUPER',
   TRY: 'TRY', CATCH: 'CATCH', FINALLY: 'FINALLY', THROW: 'THROW',
+  PASS: 'PASS',
+  MATCH: 'MATCH', CASE: 'CASE',    // match/case
+  YIELD: 'YIELD',                   // generators
+  ASYNC: 'ASYNC', AWAIT: 'AWAIT',  // async/await
+  AT: '@',                          // decorators
 }
 
 const KEYWORDS = new Set([
-  'let','fn','return','if','else','elif','while','for','in',
+  'let','const','fn','return','if','else','elif','while','for','in',
   'class','self','super','new','import','break','continue',
   'true','false','null','and','or','not',
-  'static','try','catch','finally','throw',
+  'static','try','catch','finally','throw','is','pass',
+  'match','case',
+  'yield','async','await',
 ])
 
 class Token {
@@ -110,54 +123,81 @@ class Lexer {
     this.tokens.push(new Token(TT.EOF, null, this.line))
     return this.tokens
   }
-processTripleQuotes(source) {
-  let result = ''
-  let i = 0
-  while (i < source.length) {
-    // Detect opening """
-    if (source[i] === '"' && source[i+1] === '"' && source[i+2] === '"') {
-      i += 3 // skip opening """
-      let str = ''
-      while (i < source.length) {
-        // Detect closing """
-        if (source[i] === '"' && source[i+1] === '"' && source[i+2] === '"') {
-          i += 3
-          break
+
+  processTripleQuotes(source) {
+    let result = ''
+    let i = 0
+    while (i < source.length) {
+      if (source[i] === '"' && source[i+1] === '"' && source[i+2] === '"') {
+        i += 3
+        let str = ''
+        while (i < source.length) {
+          if (source[i] === '"' && source[i+1] === '"' && source[i+2] === '"') {
+            i += 3
+            break
+          }
+          if (source[i] === '\n') { str += '\\n'; i++ }
+          else if (source[i] === '"') { str += '\\"'; i++ }
+          else { str += source[i++] }
         }
-        // Convert real newlines to \n escape so lexLine sees one flat string
-        if (source[i] === '\n') {
-          str += '\\n'
-          i++
-        } else if (source[i] === '"') {
-          // single quote inside triple string — escape it
-          str += '\\"'
-          i++
-        } else {
-          str += source[i++]
-        }
+        result += `"${str}"`
+      } else {
+        result += source[i++]
       }
-      // Emit as a regular "..." token the line lexer already understands
-      result += `"${str}"`
-    } else {
-      result += source[i++]
     }
+    return result
   }
-  return result
-}
+
+  // ─── f-string lexer: f"Hello {name}!" → FSTRING token ──────────────────
+  lexFString(src, startPos, line) {
+    let i = startPos + 1 // skip opening "
+    const parts = []
+    let text = ''
+    while (i < src.length && src[i] !== '"') {
+      if (src[i] === '\\') {
+        i++
+        const esc = { n:'\n', t:'\t', r:'\r', '\\':'\\', "'":"'", '"':'"' }
+        text += esc[src[i]] ?? src[i]
+        i++
+      } else if (src[i] === '{') {
+        if (text) { parts.push({ kind: 'text', value: text }); text = '' }
+        i++
+        let expr = ''
+        let depth = 1
+        while (i < src.length && depth > 0) {
+          if (src[i] === '{') depth++
+          else if (src[i] === '}') { depth--; if (depth === 0) { i++; break } }
+          expr += src[i++]
+        }
+        parts.push({ kind: 'expr', value: expr.trim() })
+      } else {
+        text += src[i++]
+      }
+    }
+    if (text) parts.push({ kind: 'text', value: text })
+    i++
+    this.tokens.push(new Token(TT.FSTRING, parts, line))
+    return i
+  }
+
   lexLine() {
-  const src = this.lineSource
-  let i = 0
+    const src = this.lineSource
+    let i = 0
 
     while (i < src.length) {
       const ch = src[i]
 
-      // Skip spaces and tabs within the line (after leading indent is stripped)
       if (ch === ' ' || ch === '\t') { i++; continue }
-
-      // Comment
       if (ch === '#') break
 
-      // String
+      // f-string: f"..."
+      if ((ch === 'f' || ch === 'F') && (src[i+1] === '"' || src[i+1] === "'")) {
+        i++
+        i = this.lexFString(src, i, this.line)
+        continue
+      }
+
+      // Regular string
       if (ch === '"' || ch === "'") {
         const quote = ch; i++
         let str = ''
@@ -171,7 +211,7 @@ processTripleQuotes(source) {
           }
           i++
         }
-        i++ // closing quote
+        i++
         this.tokens.push(new Token(TT.STRING, str, this.line))
         continue
       }
@@ -206,6 +246,8 @@ processTripleQuotes(source) {
         '==': TT.EQ, '!=': TT.NEQ, '<=': TT.LTE, '>=': TT.GTE,
         '->': TT.ARROW, '+=': TT.PLUS_EQ, '-=': TT.MINUS_EQ,
         '*=': TT.STAR_EQ, '/=': TT.SLASH_EQ,
+        '**': TT.STAR_STAR, '??': TT.QUESTION_QUESTION,
+        '++': TT.PLUS_PLUS, '--': TT.MINUS_MINUS,
       }
       if (twoMap[two]) {
         this.tokens.push(new Token(twoMap[two], two, this.line))
@@ -218,7 +260,7 @@ processTripleQuotes(source) {
         '%': TT.PERCENT, '<': TT.LT, '>': TT.GT, '=': TT.ASSIGN,
         '(': TT.LPAREN, ')': TT.RPAREN, '[': TT.LBRACKET, ']': TT.RBRACKET,
         '{': TT.LBRACE,  '}': TT.RBRACE, ',': TT.COMMA, '.': TT.DOT,
-        ':': TT.COLON,
+        ':': TT.COLON, '@': TT.AT,
       }
       if (oneMap[ch]) {
         this.tokens.push(new Token(oneMap[ch], ch, this.line))

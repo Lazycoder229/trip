@@ -42,13 +42,15 @@ class Parser {
     return new AST.Program(body)
   }
 
-  // ─── Block (indented body or single-line after colon) ───────────────────
+  // ─── Block ───────────────────────────────────────────────────────────────
   parseBlock() {
     this.expect(TT.COLON, "':' before block")
 
-    // Single-line block: fn(x): return x * 2
     if (!this.check(TT.NEWLINE)) {
+      const prev = this._inSingleLine
+      this._inSingleLine = true
       const stmt = this.parseStatement()
+      this._inSingleLine = prev
       return new AST.Block([stmt])
     }
 
@@ -69,7 +71,10 @@ class Parser {
     const tok = this.peek()
 
     if (tok.type === TT.LET)      return this.parseLet()
+    if (tok.type === TT.CONST)    return this.parseConst()
+    if (tok.type === TT.ASYNC)    return this.parseFn()
     if (tok.type === TT.FN)       return this.parseFn()
+    if (tok.type === TT.AT)       return this.parseDecorated()
     if (tok.type === TT.CLASS)    return this.parseClass()
     if (tok.type === TT.RETURN)   return this.parseReturn()
     if (tok.type === TT.IF)       return this.parseIf()
@@ -80,42 +85,150 @@ class Parser {
     if (tok.type === TT.IMPORT)   return this.parseImport()
     if (tok.type === TT.TRY)      return this.parseTryCatch()
     if (tok.type === TT.THROW)    return this.parseThrow()
+    if (tok.type === TT.PASS)     { this.advance(); this.match(TT.NEWLINE); return new AST.Block([]) }
+    if (tok.type === TT.MATCH)    return this.parseMatch()
 
     return this.parseExprStatement()
+  }
+
+  // ─── Type hint helper ─────────────────────────────────────────────────────
+  // Reads an optional `: TypeName` annotation and returns the type string or null.
+  // Supports simple names (int, string) and generics (array[int]) — stored as
+  // a plain string for now; the interpreter ignores it entirely.
+  parseTypeHint() {
+    if (!this.check(TT.COLON)) return null
+    // Peek ahead: if next-next is NEWLINE/EOF it's a block colon, not a type hint
+    // We disambiguate by checking whether this colon is followed by an IDENT
+    const saved = this.pos
+    this.advance() // consume ':'
+    if (this.check(TT.IDENT)) {
+      let hint = this.advance().value
+      // generic: array[int], dict[string, int]
+      if (this.check(TT.LBRACKET)) {
+        this.advance()
+        let inner = ''
+        let depth = 1
+        while (!this.isEOF() && depth > 0) {
+          const t = this.advance()
+          if (t.type === TT.LBRACKET) depth++
+          else if (t.type === TT.RBRACKET) { depth--; if (depth === 0) break }
+          inner += t.value ?? t.type
+        }
+        hint += `[${inner}]`
+      }
+      return hint
+    }
+    // Not a type hint — roll back
+    this.pos = saved
+    return null
   }
 
   parseLet() {
     this.advance() // let
     const name = this.expect(TT.IDENT, 'variable name').value
+
+    // Optional type hint: let x: int = 5
+    const typeHint = this.parseTypeHint()
+
+    this.expect(TT.ASSIGN, "'='")
+    const value = this.parseExpr()
+
+    // Multi-declaration: let a = 1, b = 2, c = 3
+    if (this.check(TT.COMMA)) {
+      const decls = [new AST.LetStatement(name, value, typeHint)]
+      while (this.match(TT.COMMA)) {
+        const n = this.expect(TT.IDENT, 'variable name').value
+        const th = this.parseTypeHint()
+        this.expect(TT.ASSIGN, "'='")
+        const v = this.parseExpr()
+        decls.push(new AST.LetStatement(n, v, th))
+      }
+      this.match(TT.NEWLINE)
+      return new AST.Block(decls)
+    }
+
+    this.match(TT.NEWLINE)
+    return new AST.LetStatement(name, value, typeHint)
+  }
+
+  parseConst() {
+    this.advance() // const
+    const name = this.expect(TT.IDENT, 'constant name').value
+    const typeHint = this.parseTypeHint()
     this.expect(TT.ASSIGN, "'='")
     const value = this.parseExpr()
     this.match(TT.NEWLINE)
-    return new AST.LetStatement(name, value)
+    return new AST.ConstStatement(name, value, typeHint)
   }
 
   parseFn() {
+    let isAsync = false
+    if (this.check(TT.ASYNC)) { this.advance(); isAsync = true }
     this.advance() // fn
     const name = this.check(TT.IDENT) ? this.advance().value : null
     this.expect(TT.LPAREN, "'('")
-    const params = this.parseParams()
+    const { params, paramTypes, defaults, hasRest, restName } = this.parseParams()
     this.expect(TT.RPAREN, "')'")
+
+    // Optional return type: -> int
+    let returnType = null
+    if (this.check(TT.ARROW)) {
+      this.advance()
+      if (this.check(TT.IDENT)) returnType = this.advance().value
+    }
+
     const body = this.parseBlock()
-    return new AST.FnDeclaration(name, params, body)
+    const fn = new AST.FnDeclaration(name, params, body)
+    fn.defaults   = defaults
+    fn.hasRest    = hasRest
+    fn.restName   = restName
+    fn.paramTypes = paramTypes
+    fn.returnType = returnType
+    fn.isAsync    = isAsync
+    return fn
   }
 
+  // Returns { params, paramTypes, defaults, hasRest, restName }
   parseParams() {
-    const params = []
+    const params     = []
+    const paramTypes = {}
+    const defaults   = {}
+    let hasRest      = false
+    let restName     = null
+
     while (!this.check(TT.RPAREN)) {
-      // Accept both IDENT and SELF ('self') as parameter names
-      if (this.check(TT.SELF)) {
+      // *rest
+      if (this.check(TT.STAR)) {
         this.advance()
-        params.push('self')
-      } else {
-        params.push(this.expect(TT.IDENT, 'parameter name').value)
+        restName = this.expect(TT.IDENT, 'rest parameter name').value
+        hasRest  = true
+        this.match(TT.COMMA)
+        break
       }
+
+      let pname
+      if (this.check(TT.SELF)) {
+        this.advance(); pname = 'self'
+      } else {
+        pname = this.expect(TT.IDENT, 'parameter name').value
+      }
+      params.push(pname)
+
+      // Optional type hint: fn foo(x: int)
+      if (this.check(TT.COLON)) {
+        this.advance()
+        if (this.check(TT.IDENT)) paramTypes[pname] = this.advance().value
+      }
+
+      // default value?
+      if (this.check(TT.ASSIGN)) {
+        this.advance()
+        defaults[pname] = this.parseExpr()
+      }
+
       if (!this.match(TT.COMMA)) break
     }
-    return params
+    return { params, paramTypes, defaults, hasRest, restName }
   }
 
   parseClass() {
@@ -137,7 +250,6 @@ class Parser {
     const stmts = []
     this.skipNewlines()
     while (!this.check(TT.DEDENT) && !this.isEOF()) {
-      // support 'static fn method(...):'
       if (this.check(TT.STATIC)) {
         this.advance()
         const fn = this.parseFn()
@@ -153,14 +265,20 @@ class Parser {
   }
 
   parseReturn() {
-    const line = this.peek().line
     this.advance() // return
-    let value = null
     if (!this.check(TT.NEWLINE) && !this.check(TT.EOF)) {
-      value = this.parseExpr()
+      const first = this.parseExpr()
+      if (!this._inSingleLine && this.check(TT.COMMA)) {
+        const elements = [first]
+        while (this.match(TT.COMMA)) elements.push(this.parseExpr())
+        this.match(TT.NEWLINE)
+        return new AST.ReturnStatement(new AST.ArrayLiteral(elements))
+      }
+      this.match(TT.NEWLINE)
+      return new AST.ReturnStatement(first)
     }
     this.match(TT.NEWLINE)
-    return new AST.ReturnStatement(value)
+    return new AST.ReturnStatement(null)
   }
 
   parseIf() {
@@ -186,14 +304,14 @@ class Parser {
   }
 
   parseWhile() {
-    this.advance() // while
+    this.advance()
     const condition = this.parseExpr()
     const body = this.parseBlock()
     return new AST.WhileStatement(condition, body)
   }
 
   parseFor() {
-    this.advance() // for
+    this.advance()
     const variable = this.expect(TT.IDENT, 'loop variable').value
     this.expect(TT.IN, "'in'")
     const iterable = this.parseExpr()
@@ -202,31 +320,27 @@ class Parser {
   }
 
   parseImport() {
-    this.advance() // import
-    const path = this.expect(TT.STRING, 'module path').value
+    this.advance()
+    const p = this.expect(TT.STRING, 'module path').value
     this.match(TT.NEWLINE)
-    return new AST.ImportStatement(path)
+    return new AST.ImportStatement(p)
   }
 
   parseThrow() {
-    this.advance() // throw
+    this.advance()
     const value = this.parseExpr()
     this.match(TT.NEWLINE)
     return new AST.ThrowStatement(value)
   }
 
   parseTryCatch() {
-    this.advance() // try
+    this.advance()
     const tryBlock = this.parseBlock()
-
-    let catchVar   = null
-    let catchBlock = null
-    let finallyBlock = null
+    let catchVar   = null, catchBlock = null, finallyBlock = null
 
     this.skipNewlines()
     if (this.check(TT.CATCH)) {
-      this.advance() // catch
-      // optional: catch(e)
+      this.advance()
       if (this.check(TT.LPAREN)) {
         this.advance()
         catchVar = this.expect(TT.IDENT, 'error variable name').value
@@ -235,13 +349,76 @@ class Parser {
       catchBlock = this.parseBlock()
       this.skipNewlines()
     }
-
     if (this.check(TT.FINALLY)) {
-      this.advance() // finally
+      this.advance()
       finallyBlock = this.parseBlock()
     }
-
     return new AST.TryCatchStatement(tryBlock, catchVar, catchBlock, finallyBlock)
+  }
+
+  // ─── match statement ──────────────────────────────────────────────────────
+  // match x:
+  //     case 1:
+  //         println("one")
+  //     case "hi":
+  //         println("hello")
+  //     else:
+  //         println("other")
+  parseMatch() {
+    const line = this.peek().line
+    this.advance() // match
+    const subject = this.parseExpr()
+    this.expect(TT.COLON, "':' after match expression")
+    this.expect(TT.NEWLINE, "newline after match ':'")
+    this.expect(TT.INDENT, 'indented match body')
+    this.skipNewlines()
+
+    const cases   = []
+    let elseBody  = null
+
+    while (!this.check(TT.DEDENT) && !this.isEOF()) {
+      if (this.check(TT.ELSE)) {
+        this.advance()
+        elseBody = this.parseBlock()
+        this.skipNewlines()
+        break
+      }
+      this.expect(TT.CASE, "'case'")
+      const pattern = this.parseExpr()   // can be any literal/expr
+      const body    = this.parseBlock()
+      cases.push({ pattern, body })
+      this.skipNewlines()
+    }
+
+    this.match(TT.DEDENT)
+    return new AST.MatchStatement(subject, cases, elseBody, line)
+  }
+
+  // ─── @decorator ──────────────────────────────────────────────────────────
+  // @dec1
+  // @dec2
+  // fn foo(): ...
+  parseDecorated() {
+    const line = this.peek().line
+    const decorators = []
+    while (this.check(TT.AT)) {
+      this.advance() // @
+      const name = this.expect(TT.IDENT, 'decorator name').value
+      const args = []
+      if (this.check(TT.LPAREN)) {
+        this.advance()
+        while (!this.check(TT.RPAREN)) {
+          args.push(this.parseExpr())
+          if (!this.match(TT.COMMA)) break
+        }
+        this.expect(TT.RPAREN, "')'")
+      }
+      decorators.push({ name, args })
+      this.match(TT.NEWLINE)
+      this.skipNewlines()
+    }
+    const fn = this.parseFn()
+    return new AST.DecoratedFn(decorators, fn, line)
   }
 
   parseExprStatement() {
@@ -250,8 +427,29 @@ class Parser {
     return new AST.ExprStatement(expr)
   }
 
-  // ─── Expressions (Pratt / precedence climbing) ────────────────────────────
-  parseExpr()       { return this.parseAssign() }
+  // ─── Expressions ─────────────────────────────────────────────────────────
+  parseExpr() { return this.parseTernary() }
+
+  parseTernary() {
+    let left = this.parseNullCoalesce()
+    if (this.check(TT.IF)) {
+      this.advance()
+      const condition = this.parseNullCoalesce()
+      this.expect(TT.ELSE, "'else'")
+      const alternate = this.parseTernary()
+      return new AST.TernaryExpr(condition, left, alternate)
+    }
+    return left
+  }
+
+  parseNullCoalesce() {
+    let left = this.parseAssign()
+    while (this.check(TT.QUESTION_QUESTION)) {
+      this.advance()
+      left = new AST.NullCoalesceExpr(left, this.parseAssign())
+    }
+    return left
+  }
 
   parseAssign() {
     const left = this.parseOr()
@@ -260,31 +458,20 @@ class Parser {
       const value = this.parseAssign()
       return new AST.AssignExpr(left, value, '=')
     }
-    if (this.check(TT.PLUS_EQ)) {
-      this.advance()
-      return new AST.AssignExpr(left, this.parseAssign(), '+=')
+    for (const [tt, op] of [[TT.PLUS_EQ,'+='], [TT.MINUS_EQ,'-='], [TT.STAR_EQ,'*='], [TT.SLASH_EQ,'/=']]) {
+      if (this.check(tt)) {
+        this.advance()
+        return new AST.AssignExpr(left, this.parseAssign(), op)
+      }
     }
-    if (this.check(TT.MINUS_EQ)) {
-      this.advance()
-      return new AST.AssignExpr(left, this.parseAssign(), '-=')
-    }
-   
-    if (this.check(TT.STAR_EQ)) {
-      this.advance()
-      return new AST.AssignExpr(left, this.parseAssign(), '*=')
-    }
-    if (this.check(TT.SLASH_EQ)) {
-      this.advance()
-      return new AST.AssignExpr(left, this.parseAssign(), '/=')
-    }
-        return left
+    return left
   }
 
   parseOr() {
     let left = this.parseAnd()
     while (this.check(TT.OR)) {
-      const op = this.advance().value
-      left = new AST.BinaryExpr(left, op, this.parseAnd())
+      const opTok = this.advance()
+      left = new AST.BinaryExpr(left, opTok.value, this.parseAnd(), opTok.line)
     }
     return left
   }
@@ -292,8 +479,8 @@ class Parser {
   parseAnd() {
     let left = this.parseEquality()
     while (this.check(TT.AND)) {
-      const op = this.advance().value
-      left = new AST.BinaryExpr(left, op, this.parseEquality())
+      const opTok = this.advance()
+      left = new AST.BinaryExpr(left, opTok.value, this.parseEquality(), opTok.line)
     }
     return left
   }
@@ -301,17 +488,31 @@ class Parser {
   parseEquality() {
     let left = this.parseComparison()
     while (this.check(TT.EQ) || this.check(TT.NEQ)) {
-      const op = this.advance().type
-      left = new AST.BinaryExpr(left, op, this.parseComparison())
+      const opTok = this.advance()
+      left = new AST.BinaryExpr(left, opTok.type, this.parseComparison(), opTok.line)
     }
     return left
   }
 
   parseComparison() {
-    let left = this.parseAddSub()
+    let left = this.parseIn()
     while ([TT.LT, TT.GT, TT.LTE, TT.GTE].includes(this.peek().type)) {
-      const op = this.advance().type
-      left = new AST.BinaryExpr(left, op, this.parseAddSub())
+      const opTok = this.advance()
+      left = new AST.BinaryExpr(left, opTok.type, this.parseIn(), opTok.line)
+    }
+    return left
+  }
+
+  parseIn() {
+    let left = this.parseAddSub()
+    if (this.check(TT.IN)) {
+      const line = this.peek().line; this.advance()
+      return new AST.InExpr(left, this.parseAddSub(), line)
+    }
+    if (this.check(TT.IS)) {
+      const line = this.peek().line; this.advance()
+      const typeName = this.expect(TT.IDENT, 'type name').value
+      return new AST.IsExpr(left, typeName, line)
     }
     return left
   }
@@ -319,29 +520,37 @@ class Parser {
   parseAddSub() {
     let left = this.parseMulDiv()
     while (this.check(TT.PLUS) || this.check(TT.MINUS)) {
-      const op = this.advance().type
-      left = new AST.BinaryExpr(left, op, this.parseMulDiv())
+      const opTok = this.advance()
+      left = new AST.BinaryExpr(left, opTok.type, this.parseMulDiv(), opTok.line)
     }
     return left
   }
 
   parseMulDiv() {
-    let left = this.parseUnary()
+    let left = this.parseExp()
     while (this.check(TT.STAR) || this.check(TT.SLASH) || this.check(TT.PERCENT)) {
-      const op = this.advance().type
-      left = new AST.BinaryExpr(left, op, this.parseUnary())
+      const opTok = this.advance()
+      left = new AST.BinaryExpr(left, opTok.type, this.parseExp(), opTok.line)
+    }
+    return left
+  }
+
+  parseExp() {
+    let left = this.parseUnary()
+    if (this.check(TT.STAR_STAR)) {
+      const line = this.peek().line; this.advance()
+      return new AST.BinaryExpr(left, '**', this.parseExp(), line)
     }
     return left
   }
 
   parseUnary() {
-    if (this.check(TT.NOT)) {
-      this.advance()
-      return new AST.UnaryExpr('not', this.parseUnary())
-    }
-    if (this.check(TT.MINUS)) {
-      this.advance()
-      return new AST.UnaryExpr('-', this.parseUnary())
+    if (this.check(TT.NOT)) { this.advance(); return new AST.UnaryExpr('not', this.parseUnary()) }
+    if (this.check(TT.MINUS)) { this.advance(); return new AST.UnaryExpr('-', this.parseUnary()) }
+    if (this.check(TT.PLUS_PLUS) || this.check(TT.MINUS_MINUS)) {
+      const op = this.advance().type === TT.PLUS_PLUS ? '++' : '--'
+      const target = this.parsePostfix()
+      return new AST.IncrDecrExpr(target, op, true)
     }
     return this.parsePostfix()
   }
@@ -369,6 +578,9 @@ class Parser {
         }
         this.expect(TT.RPAREN, "')'")
         expr = new AST.CallExpr(expr, args, line)
+      } else if (this.check(TT.PLUS_PLUS) || this.check(TT.MINUS_MINUS)) {
+        const op = this.advance().type === TT.PLUS_PLUS ? '++' : '--'
+        expr = new AST.IncrDecrExpr(expr, op, false)
       } else break
     }
 
@@ -383,18 +595,35 @@ class Parser {
     if (tok.type === TT.BOOL)    { this.advance(); return new AST.BoolLiteral(tok.value) }
     if (tok.type === TT.NULL)    { this.advance(); return new AST.NullLiteral() }
 
+    if (tok.type === TT.AWAIT) {
+      const line = tok.line
+      this.advance()
+      const value = this.parseUnary()
+      return new AST.AwaitExpr(value, line)
+    }
+
+    if (tok.type === TT.YIELD) {
+      const line = tok.line
+      this.advance()
+      const value = (!this.check(TT.NEWLINE) && !this.check(TT.EOF))
+        ? this.parseExpr()
+        : null
+      return new AST.YieldExpr(value, line)
+    }
+
+    if (tok.type === TT.FSTRING) {      this.advance()
+      return new AST.FStringExpr(tok.value, tok.line)
+    }
+
     if (tok.type === TT.IDENT || tok.type === TT.SELF || tok.type === TT.SUPER) {
       this.advance()
       return new AST.Identifier(tok.value, tok.line)
     }
 
-    if (tok.type === TT.FN) return this.parseFn() // anonymous fn
+    if (tok.type === TT.FN) return this.parseFn()
 
-    // new ClassName(args) — syntactic sugar for a plain call expression.
-    // 'new Dog("Rex")' is identical to 'Dog("Rex")' at the AST level;
-    // the interpreter already handles class instantiation via CallExpr.
     if (tok.type === TT.NEW) {
-      this.advance() // consume 'new'
+      this.advance()
       const nameTok = this.expect(TT.IDENT, 'class name')
       const callee  = new AST.Identifier(nameTok.value, nameTok.line)
       const line    = nameTok.line
@@ -415,26 +644,66 @@ class Parser {
       return expr
     }
 
+    // ─── Array literal OR list comprehension ─────────────────────────────
     if (tok.type === TT.LBRACKET) {
+      const line = tok.line
       this.advance()
-      const elements = []
-      while (!this.check(TT.RBRACKET)) {
+      if (this.check(TT.RBRACKET)) { this.advance(); return new AST.ArrayLiteral([]) }
+
+      const first = this.parseExpr()  // full expr OK — ternary `if`..`else` is fully consumed before `for`
+
+      // [expr for var in iterable (if cond)?]
+      if (this.check(TT.FOR)) {
+        this.advance()
+        const variable = this.expect(TT.IDENT, 'loop variable').value
+        this.expect(TT.IN, "'in'")
+        const iterable = this.parseAssign()  // stop before ternary `if`
+        let condition = null
+        if (this.check(TT.IF)) { this.advance(); condition = this.parseAssign() }
+        this.expect(TT.RBRACKET, "']'")
+        return new AST.ListComprehension(first, variable, iterable, condition, line)
+      }
+
+      // Regular array literal
+      const elements = [first]
+      while (this.match(TT.COMMA)) {
+        if (this.check(TT.RBRACKET)) break // trailing comma
         elements.push(this.parseExpr())
-        if (!this.match(TT.COMMA)) break
       }
       this.expect(TT.RBRACKET, "']'")
       return new AST.ArrayLiteral(elements)
     }
 
+    // ─── Dict literal OR dict comprehension ──────────────────────────────
     if (tok.type === TT.LBRACE) {
+      const line = tok.line
       this.advance()
-      const pairs = []
-      while (!this.check(TT.RBRACE)) {
+      if (this.check(TT.RBRACE)) { this.advance(); return new AST.DictLiteral([]) }
+
+      const firstKey = this.parseExpr()  // full expr OK
+      this.expect(TT.COLON, "':'")
+      const firstVal = this.parseExpr()
+
+      // {key: val for var in iterable (if cond)?}
+      if (this.check(TT.FOR)) {
+        this.advance()
+        const variable = this.expect(TT.IDENT, 'loop variable').value
+        this.expect(TT.IN, "'in'")
+        const iterable = this.parseAssign()  // stop before ternary `if`
+        let condition = null
+        if (this.check(TT.IF)) { this.advance(); condition = this.parseAssign() }
+        this.expect(TT.RBRACE, "'}'")
+        return new AST.DictComprehension(firstKey, firstVal, variable, iterable, condition, line)
+      }
+
+      // Regular dict literal
+      const pairs = [[firstKey, firstVal]]
+      while (this.match(TT.COMMA)) {
+        if (this.check(TT.RBRACE)) break // trailing comma
         const key = this.parseExpr()
         this.expect(TT.COLON, "':'")
         const val = this.parseExpr()
         pairs.push([key, val])
-        if (!this.match(TT.COMMA)) break
       }
       this.expect(TT.RBRACE, "'}'")
       return new AST.DictLiteral(pairs)

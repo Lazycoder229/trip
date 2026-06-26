@@ -1,0 +1,42 @@
+# stdlib/datetime — Trip datetime helpers
+# import "stdlib/datetime"
+# Wraps the built-in `datetime` map with higher-level helpers.
+
+fn now():
+    return datetime.now()
+
+fn dateString(ms):
+    return datetime.string(ms)
+
+fn today():
+    return datetime.string(datetime.now()).slice(0, 10)
+
+fn timestamp():
+    return datetime.now()
+
+fn isLeapYear(year):
+    if year % 400 == 0: return true
+    if year % 100 == 0: return false
+    if year % 4 == 0:   return true
+    return false
+
+fn daysInMonth(month, year):
+    let days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    if month == 2 and isLeapYear(year):
+        return 29
+    return days[month - 1]
+
+fn formatDate(ms):
+    let y = datetime.year(ms)
+    let m = padStart(str(datetime.month(ms)), 2, "0")
+    let d = padStart(str(datetime.day(ms)), 2, "0")
+    return f"{y}-{m}-{d}"
+
+fn formatTime(ms):
+    let h = padStart(str(datetime.hour(ms)), 2, "0")
+    let m = padStart(str(datetime.minute(ms)), 2, "0")
+    let s = padStart(str(datetime.second(ms)), 2, "0")
+    return f"{h}:{m}:{s}"
+
+fn formatDateTime(ms):
+    return formatDate(ms) + " " + formatTime(ms)

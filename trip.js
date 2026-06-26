@@ -4,18 +4,32 @@ const path = require('path')
 const { performance } = require('perf_hooks')
 const { Lexer }       = require('./src/lexer')
 const { Parser }      = require('./src/parser')
-const { Interpreter } = require('./src/interpreter')
+const { Interpreter, TripError } = require('./src/interpreter')
 
-// Reports how long Trip itself took (lex + parse + execute), as opposed to
-// how long the OS took to spawn+boot this Node process. Sent over the IPC
-// channel (process.send), not stdout — so it never mixes with the script's
-// own print()/println() output. process.send only exists when the parent
-// spawned us with an 'ipc' stdio pipe; the IDE does, plain `node trip.js`
-// from a terminal does not, so this is a no-op there.
 function reportExecTime(ms) {
   if (typeof process.send === 'function') {
-    try { process.send({ type: 'trip:exec-time', ms }) } catch (_) { /* parent gone, ignore */ }
+    try { process.send({ type: 'trip:exec-time', ms }) } catch (_) {}
   }
+}
+
+// ─── Colored error output ──────────────────────────────────────────────────
+// ─── Colored error output ──────────────────────────────────────────────────
+function printError(err) {
+  if (err instanceof TripError) {
+    const location = err.tripLine != null ? ` Line ${err.tripLine} →` : ''
+    console.error(`[${err.phase} Error]${location} ${err.tripMsg}`)
+    return
+  }
+
+  const structured = err.message.match(/^\[(Lexer|Parser|Runtime)\](?: Line (\d+):)? (.+)$/)
+  if (structured) {
+    const [, phase, line, msg] = structured
+    const location = line ? ` Line ${line} →` : ''
+    console.error(`[${phase} Error]${location} ${msg}`)
+    return
+  }
+
+  console.error(`[Internal Error] ${err.message}`)
 }
 
 function run(source, filePath = process.cwd()) {
@@ -28,7 +42,7 @@ function run(source, filePath = process.cwd()) {
     reportExecTime(performance.now() - start)
   } catch (err) {
     reportExecTime(performance.now() - start)
-    console.error('\x1b[31m' + err.message + '\x1b[0m')
+    printError(err)
     process.exit(1)
   }
 }
@@ -45,7 +59,7 @@ function repl() {
   process.stdin.resume()
 
   let stdinBuf   = ''
-  let multiLines = []   // lines collected for the current block
+  let multiLines = []
   let inBlock    = false
 
   function prompt() {
@@ -63,7 +77,7 @@ function repl() {
       const result = interp.run(ast)
       if (result !== null && result !== undefined) console.log('=>', result)
     } catch (e) {
-      console.error('\x1b[31m' + e.message + '\x1b[0m')
+      printError(e)
     }
     prompt()
   }
@@ -73,19 +87,17 @@ function repl() {
   process.stdin.on('data', (chunk) => {
     stdinBuf += chunk
     const lines = stdinBuf.split('\n')
-    stdinBuf = lines.pop() // keep any incomplete trailing chunk
+    stdinBuf = lines.pop()
 
     for (const raw of lines) {
       const line = raw.replace(/\r/g, '').trimEnd()
 
-      // 'exit' always quits, even mid-block
       if (line.trim() === 'exit') {
         console.log('Bye!')
         process.exit(0)
       }
 
       if (inBlock) {
-        // Blank line = done typing the block, execute it now
         if (line.trim() === '') {
           executeBlock()
         } else {
@@ -97,14 +109,11 @@ function repl() {
 
         multiLines.push(line)
 
-        // A line ending with ':' (ignoring inline comments) opens a block —
-        // switch to '...' mode and wait for lines + blank line to terminate
         const stripped = line.replace(/#.*$/, '').trimEnd()
         if (stripped.endsWith(':')) {
           inBlock = true
           prompt()
         } else {
-          // Plain single-line statement — execute right away
           executeBlock()
         }
       }
@@ -120,7 +129,7 @@ if (args.length === 0) {
 } else {
   const filePath = path.resolve(args[0])
   if (!fs.existsSync(filePath)) {
-    console.error(`File not found: ${filePath}`)
+    console.error(`\x1b[31m[Error]\x1b[0m File not found: ${filePath}`)
     process.exit(1)
   }
   const source = fs.readFileSync(filePath, 'utf8')

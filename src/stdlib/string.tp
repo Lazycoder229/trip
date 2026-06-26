@@ -1,0 +1,74 @@
+# stdlib/string — Trip string utilities
+# import "stdlib/string"
+
+fn startsWith(s, prefix):
+    return s.startsWith(prefix)
+
+fn endsWith(s, suffix):
+    return s.endsWith(suffix)
+
+fn center(s, width, fillChar):
+    let n = width - len(s)
+    if n <= 0: return s
+    let left = floor(n / 2)
+    let right = n - left
+    return repeat(fillChar, left) + s + repeat(fillChar, right)
+
+fn zfill(s, width):
+    return padStart(str(s), width, "0")
+
+fn countOccurrences(s, sub):
+    let count = 0
+    let i = 0
+    while i <= len(s) - len(sub):
+        if s.slice(i, i + len(sub)) == sub:
+            count = count + 1
+            i = i + len(sub)
+        else:
+            i = i + 1
+    return count
+
+fn isDigit(s):
+    if len(s) == 0: return false
+    let digits = "0123456789"
+    for ch in s:
+        if not (ch in digits):
+            return false
+    return true
+
+fn isAlpha(s):
+    if len(s) == 0: return false
+    let alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    for ch in s:
+        if not (ch in alpha):
+            return false
+    return true
+
+fn capitalize(s):
+    if len(s) == 0: return s
+    return upper(s.slice(0, 1)) + lower(s.slice(1, len(s)))
+
+fn titleCase(s):
+    let words = split(s, " ")
+    let result = []
+    for w in words:
+        push(result, capitalize(w))
+    return join(result, " ")
+
+fn stripLeft(s):
+    let i = 0
+    while i < len(s) and s[i] == " ":
+        i = i + 1
+    return s.slice(i, len(s))
+
+fn stripRight(s):
+    let i = len(s) - 1
+    while i >= 0 and s[i] == " ":
+        i = i - 1
+    return s.slice(0, i + 1)
+
+fn replaceAll(s, old, newStr):
+    return s.replaceAll(old, newStr)
+
+fn lines(s):
+    return split(s, "\n")
