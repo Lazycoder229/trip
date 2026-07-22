@@ -1,0 +1,22 @@
+class Point
+    fn init(x, y)
+        self.x = x
+        self.y = y
+
+    fn distance(other)
+        let dx = self.x - other.x
+        let dy = self.y - other.y
+        return dx * dx + dy * dy
+
+let p1 = Point(10, 20)
+let p2 = Point(13, 24)
+
+outn(p1.distance(p2))
+
+#Test bound methods
+let method = p1.distance
+outn(method(p2))
+
+# Test properties
+p1.z = 100
+outn(p1.z)

@@ -1,0 +1,34 @@
+# 2 WAY CONVENTIONS DEFINING VARIABLE IN TRIP LANGUAGE
+
+# What is variable ?
+# - variable in trip can hold any type of data
+
+
+# How to declare variable in trip lang?
+# Using let and const keyword
+
+# let 
+# let keyword is mutable, When you assign variable using let keyword in trip give you
+# a chance to change it's value during runtime
+# Use let if you already know that the value carries by this will change through the entire programs
+
+ # need to fixed this
+# EXAMPLE
+let name = "Trip"
+outn(name) #output : Trip
+
+
+
+# Try to change the assign value  from "Trip" to "Language" then print the output
+name = "Language"
+outn(name) #output : Language
+
+# What happen inside?
+# In trip let is mutable. it allows user to change the assign value to it's variable during runtime
+
+
+
+#Redeclaration of let keyword with the same variable name  will raised an Runtime errors.
+let name = "Language"
+outn(name) 
+#output : Runtime Error : Redeclaration of let keyword with the same variable is not allowed.

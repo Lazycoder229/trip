@@ -1,0 +1,4 @@
+{
+  "threshold": 80,
+  "output": "results.json"
+}

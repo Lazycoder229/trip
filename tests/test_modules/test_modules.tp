@@ -1,0 +1,5 @@
+import "test_modules/mathutils.tp"
+
+outn(GREETING)
+outn(square(5))
+outn(cube(3))

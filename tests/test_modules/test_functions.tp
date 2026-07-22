@@ -1,0 +1,8 @@
+fn greet(name)
+    outn("Hello, " + name + "!")
+
+fn add(a, b)
+    return a + b
+
+outn(add(2, 3))
+greet("Trip")

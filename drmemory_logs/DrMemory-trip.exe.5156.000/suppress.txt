@@ -1,0 +1,122 @@
+# File for suppressing errors found in pid 5156: "trip.exe"
+
+# Suppression for Error #1
+UNADDRESSABLE ACCESS
+name=Error #1 (update to meaningful name)
+trip.exe!.text
+trip.exe!_pei386_runtime_relocator
+trip.exe!__tmainCRTStartup
+KERNEL32.dll!BaseThreadInitThunk
+
+## Mod+offs-style suppression for Error #1:
+UNADDRESSABLE ACCESS
+name=Error #1 (update to meaningful name)
+<trip.exe+0x2285b>
+<trip.exe+0x21d96>
+<trip.exe+0x11a0>
+<KERNEL32.dll+0x17374>
+
+# Suppression for Error #2
+UNINITIALIZED READ
+name=Error #2 (update to meaningful name)
+system call NtQueryDirectoryFileEx parameter value #6
+KERNELBASE.dll!FindFirstFileExW
+KERNELBASE.dll!FindFirstFileA
+msvcrt.dll!stat64
+trip.exe!stat
+trip.exe!main
+
+## Mod+offs-style suppression for Error #2:
+UNINITIALIZED READ
+name=Error #2 (update to meaningful name)
+system call NtQueryDirectoryFileEx parameter value #6
+<KERNELBASE.dll+0x28204>
+<KERNELBASE.dll+0x754af>
+<msvcrt.dll+0x8882>
+<trip.exe+0x3157d>
+<trip.exe+0x334cf>
+
+# Suppression for Error #3
+UNINITIALIZED READ
+name=Error #3 (update to meaningful name)
+system call NtQueryDirectoryFileEx parameter value #6
+KERNELBASE.dll!FindFirstFileExW
+KERNELBASE.dll!FindFirstFileA
+msvcrt.dll!wfindnexti64
+trip.exe!readdir
+trip.exe!runTestsInDir
+trip.exe!main
+
+## Mod+offs-style suppression for Error #3:
+UNINITIALIZED READ
+name=Error #3 (update to meaningful name)
+system call NtQueryDirectoryFileEx parameter value #6
+<KERNELBASE.dll+0x28204>
+<KERNELBASE.dll+0x754af>
+<msvcrt.dll+0x7396>
+<trip.exe+0x22b3f>
+<trip.exe+0x174f>
+<trip.exe+0x3356d>
+
+# Suppression for Error #4
+UNINITIALIZED READ
+name=Error #4 (update to meaningful name)
+system call NtQueryDirectoryFileEx parameter value #6
+KERNELBASE.dll!FindNextFileW
+KERNELBASE.dll!FindNextFileA
+msvcrt.dll!wfindnexti64
+trip.exe!readdir
+trip.exe!runTestsInDir
+trip.exe!main
+
+## Mod+offs-style suppression for Error #4:
+UNINITIALIZED READ
+name=Error #4 (update to meaningful name)
+system call NtQueryDirectoryFileEx parameter value #6
+<KERNELBASE.dll+0x50a9c>
+<KERNELBASE.dll+0x50838>
+<msvcrt.dll+0x74e2>
+<trip.exe+0x22bd7>
+<trip.exe+0x174f>
+<trip.exe+0x3356d>
+
+# Suppression for Error #5
+UNINITIALIZED READ
+name=Error #5 (update to meaningful name)
+system call NtQueryDirectoryFileEx parameter value #6
+KERNELBASE.dll!FindFirstFileExW
+KERNELBASE.dll!FindFirstFileA
+msvcrt.dll!stat64
+trip.exe!stat
+trip.exe!runTestsInDir
+trip.exe!main
+
+## Mod+offs-style suppression for Error #5:
+UNINITIALIZED READ
+name=Error #5 (update to meaningful name)
+system call NtQueryDirectoryFileEx parameter value #6
+<KERNELBASE.dll+0x28204>
+<KERNELBASE.dll+0x754af>
+<msvcrt.dll+0x8882>
+<trip.exe+0x3157d>
+<trip.exe+0x17ad>
+<trip.exe+0x3356d>
+
+# Suppression for Error #6
+UNADDRESSABLE ACCESS
+name=Error #6 (update to meaningful name)
+trip.exe!.text
+trip.exe!__pformat_int.isra.0
+trip.exe!__mingw_pformat
+trip.exe!__mingw_printf
+trip.exe!main
+
+## Mod+offs-style suppression for Error #6:
+UNADDRESSABLE ACCESS
+name=Error #6 (update to meaningful name)
+<trip.exe+0x2285b>
+<trip.exe+0x233f9>
+<trip.exe+0x251d4>
+<trip.exe+0x25b9b>
+<trip.exe+0x3351b>
+

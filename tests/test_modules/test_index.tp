@@ -1,0 +1,16 @@
+let a = [1, 2, 3, 4, 5]
+outn(a[0])
+outn(a[-1])
+a[2] = 99
+outn(a)
+
+let d = {"name": "Trip"}
+outn(d["name"])
+d["version"] = 1
+outn(d)
+outn(d["missing"])   # nil — no error
+
+let s = "hello"
+outn(s[1])
+outn(s[-1])
+outn(type(s[0]))   # char

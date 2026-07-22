@@ -1,0 +1,30 @@
+let server = tcpListen(8080)
+outn("Listening on http://localhost:8080")
+
+while true
+    let client = tcpAccept(server)
+    spawn fn()
+        let raw = tcpRead(client)
+        if raw == nil or len(raw) == 0
+            tcpClose(client)
+            return
+        let req = httpParse(raw)
+        let path = req["path"]
+        let method = req["method"]
+        let body = ""
+        let status = 200
+
+        if path == "/"
+            body = "Welcome to my Trip server!"
+        elif path == "/hello"
+            let name = req["query"].get("name", "stranger")
+            body = f"Hello, {name}!"
+        elif path == "/echo" and method == "POST"
+            body = req["body"]
+        else
+            status = 404
+            body = "Not found"
+
+        let res = httpResponse(status, {"Content-Type": "text/plain"}, body)
+        tcpWrite(client, res)
+        tcpClose(client)

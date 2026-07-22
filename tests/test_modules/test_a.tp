@@ -1,0 +1,15 @@
+let server = tcpListen(8080, "0.0.0.0", 100)
+outn("Listening on :8080")
+fn handleClient(client)
+    let raw = tcpRead(client)
+    let req = httpParse(raw)
+    outn(type(req))            
+    outn(req["method"])        
+    outn(req["path"])
+    let res = httpResponse(200, nil, "Hello from fiber!")
+    tcpWrite(client, res)
+    tcpClose(client)
+
+while true
+    let client = tcpAccept(server)
+    spawn handleClient(client)

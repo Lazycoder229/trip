@@ -1,0 +1,18 @@
+outn(sqrt(16))
+outn(pow(2, 10))
+outn(abs(-5))
+outn(min(3, 1, 4, 1, 5, 9))
+outn(max(3, 1, 4, 1, 5, 9))
+outn(floor(3.7))
+outn(ceil(3.2))
+outn(round(3.456, 2))
+outn(PI)
+outn(E)
+
+let dieRoll = randomInt(1, 6)
+outn(dieRoll >= 1 and dieRoll <= 6)
+
+try
+    outn(sqrt(-1))
+catch e
+    outn("Caught: " + e)

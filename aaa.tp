@@ -1,0 +1,24 @@
+fn log(level, msg)
+    let ts = dateFormat(time(), "%Y-%m-%d %H:%M:%S")
+    outn(f"[{ts}] [{level}] {msg}")
+
+fn stopwatch(label, workFn)
+    let start = timeMs()
+    workFn()
+    let elapsed = timeMs() - start
+    log("INFO", f"{label} completed in {int(elapsed)}ms")
+
+log("INFO", "App started")
+log("INFO", "Loading configuration")
+
+stopwatch("startup", fn() => sleep(150))
+
+let d = dateNow()
+let days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+log("INFO", f"Today is {days[d[\"weekday\"]]}")
+
+let target = dateMake(2026, 1, 1, 0, 0, 0)
+let daysLeft = int((target - time()) / 86400)
+log("INFO", f"Days until 2026: {daysLeft}")
+
+log("INFO", "Shutdown complete")

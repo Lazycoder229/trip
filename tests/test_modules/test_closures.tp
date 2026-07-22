@@ -1,0 +1,45 @@
+fn makeCounter()
+    let count = 0
+    fn increment()
+        count += 1
+        return count
+    fn incrementBy(n)
+        count += n
+        return count
+    fn peek()
+        return count
+    outn(increment())
+    outn(increment())
+    outn(incrementBy(10))
+    outn(peek())
+
+makeCounter()
+
+fn makeAdder(x)
+    fn addX(y)
+        return x + y
+    return addX
+
+let add5 = makeAdder(5)
+outn(add5(10))
+outn(add5(20))
+
+fn outer()
+    let x = 1
+    fn middle()
+        let y = 2
+        fn inner()
+            return x + y
+        return inner()
+    return middle()
+
+outn(outer())
+
+fn runFactorial(n)
+    fn fact(k)
+        if k <= 1
+            return 1
+        return k * fact(k - 1)
+    return fact(n)
+
+outn(runFactorial(5))

@@ -1,0 +1,20 @@
+let name = "Trip"
+outn(f"Hello, {name}!")
+
+let x = 5
+let y = 10
+outn(f"x = {x}, y = {y}, sum = {x + y}")
+
+fn square(n)
+    return n * n
+outn(f"square(5) = {square(5)}")
+
+let flag = true
+let nothing = nil
+outn(f"flag={flag}, nothing={nothing}")
+
+outn(f"just plain text, no interpolation")
+
+let a = 1
+let b = 2
+outn(f"{a}{b}")

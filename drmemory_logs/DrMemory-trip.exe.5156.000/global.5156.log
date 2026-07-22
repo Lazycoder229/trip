@@ -1,0 +1,237 @@
+Dr. Memory version 2.6.0 build 0 built on Sep 21 2023 17:38:58
+start time: 3730319:25:36.154 == 23:25:36.154 07/21/2026
+Recorded 124 suppression(s) from default C:\Program Files (x86)\Dr. Memory\bin64\suppress-default.txt
+Recorded 10 suppression(s) from user C:\Users\resty\Desktop\trip_patched_updated\trip_patched\drmemory-suppressions.txt
+Using system call file C:\Users\resty\Desktop\trip_patched_updated\trip_patched\drmemory_logs\symcache\syscalls_x64.txt
+Syscall mismatch detected.  Running on unknown kernel version!
+WARNING: duplicate entry added to name2num_table: WOWCLEANUP
+new thread #0 id=5736
+
+module load event: "dynamorio.dll" 0x0000000071000000-0x00000000711c9000 modid: 1 C:\Program Files (x86)\Dr. Memory\dynamorio\lib64\release\dynamorio.dll
+
+module load event: "drmemorylib.dll" 0x00007ff766f70000-0x00007ff767229000 modid: 2 C:\Program Files (x86)\Dr. Memory\bin64\release\drmemorylib.dll
+
+module load event: "trip.exe" 0x00007ff7d6ec0000-0x00007ff7d6f6e000 modid: 3 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\trip.exe
+
+module load event: "libunistring-5.dll" 0x00007ffb878d0000-0x00007ffb87afd000 modid: 4 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libunistring-5.dll
+
+module load event: "libintl-8.dll" 0x00007ffb87b00000-0x00007ffb87b52000 modid: 5 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libintl-8.dll
+
+module load event: "libiconv-2.dll" 0x00007ffb87b60000-0x00007ffb87c7f000 modid: 6 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libiconv-2.dll
+
+module load event: "libnghttp3-9.dll" 0x00007ffb87c80000-0x00007ffb87cb8000 modid: 7 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libnghttp3-9.dll
+
+module load event: "zlib1.dll" 0x00007ffb87cc0000-0x00007ffb87ce6000 modid: 8 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\zlib1.dll
+
+module load event: "libbrotlicommon.dll" 0x00007ffb87cf0000-0x00007ffb87d1b000 modid: 9 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libbrotlicommon.dll
+
+module load event: "libzstd.dll" 0x00007ffb87d20000-0x00007ffb87e4f000 modid: 10 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libzstd.dll
+
+module load event: "libssh2-1.dll" 0x00007ffb87e50000-0x00007ffb87ea2000 modid: 11 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libssh2-1.dll
+
+module load event: "libcrypto-3-x64.dll" 0x00007ffb87eb0000-0x00007ffb883f7000 modid: 12 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libcrypto-3-x64.dll
+
+module load event: "libngtcp2-16.dll" 0x00007ffb88400000-0x00007ffb88467000 modid: 13 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libngtcp2-16.dll
+
+module load event: "libidn2-0.dll" 0x00007ffb88470000-0x00007ffb884b2000 modid: 14 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libidn2-0.dll
+
+module load event: "libssl-3-x64.dll" 0x00007ffb884c0000-0x00007ffb885b2000 modid: 15 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libssl-3-x64.dll
+
+module load event: "libcurl-4.dll" 0x00007ffb885c0000-0x00007ffb88710000 modid: 16 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libcurl-4.dll
+
+module load event: "libpcre2-8-0.dll" 0x00007ffb88710000-0x00007ffb887c6000 modid: 17 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libpcre2-8-0.dll
+
+module load event: "libnghttp2-14.dll" 0x00007ffb8b570000-0x00007ffb8b5ac000 modid: 18 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libnghttp2-14.dll
+
+module load event: "Secur32.dll" 0x00007ffb95eb0000-0x00007ffb95ebc000 modid: 19 C:\WINDOWS\SYSTEM32\Secur32.dll
+WARNING: unable to load symbols for C:\WINDOWS\SYSTEM32\Secur32.dll
+
+module load event: "libpsl-5.dll" 0x00007ffb97a70000-0x00007ffb97a91000 modid: 20 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libpsl-5.dll
+
+module load event: "libngtcp2_crypto_ossl-0.dll" 0x00007ffba0730000-0x00007ffba0743000 modid: 21 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libngtcp2_crypto_ossl-0.dll
+
+module load event: "libbrotlidec.dll" 0x00007ffba0d00000-0x00007ffba0d17000 modid: 22 C:\Users\resty\Desktop\trip_patched_updated\trip_patched\dist\libbrotlidec.dll
+
+module load event: "IPHLPAPI.DLL" 0x00007ffba6870000-0x00007ffba68ab000 modid: 23 C:\WINDOWS\SYSTEM32\IPHLPAPI.DLL
+WARNING: unable to load symbols for C:\WINDOWS\SYSTEM32\IPHLPAPI.DLL
+
+module load event: "CRYPTBASE.dll" 0x00007ffba6da0000-0x00007ffba6dac000 modid: 24 C:\WINDOWS\SYSTEM32\CRYPTBASE.DLL
+WARNING: unable to load symbols for C:\WINDOWS\SYSTEM32\CRYPTBASE.DLL
+
+module load event: "SspiCli.dll" 0x00007ffba73c0000-0x00007ffba73f2000 modid: 25 C:\WINDOWS\SYSTEM32\SSPICLI.DLL
+WARNING: unable to load symbols for C:\WINDOWS\SYSTEM32\SSPICLI.DLL
+
+module load event: "bcryptPrimitives.dll" 0x00007ffba7560000-0x00007ffba75e2000 modid: 26 C:\WINDOWS\System32\bcryptPrimitives.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\bcryptPrimitives.dll
+
+module load event: "ucrtbase.dll" 0x00007ffba75f0000-0x00007ffba76f0000 modid: 27 C:\WINDOWS\System32\ucrtbase.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\ucrtbase.dll
+
+module load event: "bcrypt.dll" 0x00007ffba76f0000-0x00007ffba7717000 modid: 28 C:\WINDOWS\System32\bcrypt.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\bcrypt.dll
+
+module load event: "gdi32full.dll" 0x00007ffba7720000-0x00007ffba7839000 modid: 29 C:\WINDOWS\System32\gdi32full.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\gdi32full.dll
+
+module load event: "win32u.dll" 0x00007ffba7840000-0x00007ffba7862000 modid: 30 C:\WINDOWS\System32\win32u.dll
+
+module load event: "KERNELBASE.dll" 0x00007ffba78c0000-0x00007ffba7bb6000 modid: 31 C:\WINDOWS\System32\KERNELBASE.dll
+
+module load event: "msvcp_win.dll" 0x00007ffba7bc0000-0x00007ffba7c5d000 modid: 32 C:\WINDOWS\System32\msvcp_win.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\msvcp_win.dll
+
+module load event: "CRYPT32.dll" 0x00007ffba7c60000-0x00007ffba7dbd000 modid: 33 C:\WINDOWS\System32\CRYPT32.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\CRYPT32.dll
+
+module load event: "RPCRT4.dll" 0x00007ffba7f40000-0x00007ffba8060000 modid: 34 C:\WINDOWS\System32\RPCRT4.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\RPCRT4.dll
+
+module load event: "KERNEL32.dll" 0x00007ffba8070000-0x00007ffba8132000 modid: 35 C:\WINDOWS\System32\KERNEL32.DLL
+
+module load event: "GDI32.dll" 0x00007ffba8310000-0x00007ffba833b000 modid: 36 C:\WINDOWS\System32\GDI32.dll
+
+module load event: "ADVAPI32.dll" 0x00007ffba8870000-0x00007ffba8921000 modid: 37 C:\WINDOWS\System32\ADVAPI32.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\ADVAPI32.dll
+
+module load event: "USER32.dll" 0x00007ffba8930000-0x00007ffba8ad1000 modid: 38 C:\WINDOWS\System32\USER32.dll
+WARNING: error finding UserConnectToServer syscall #
+module load event: "WS2_32.dll" 0x00007ffba8b60000-0x00007ffba8bcb000 modid: 39 C:\WINDOWS\System32\WS2_32.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\WS2_32.dll
+
+module load event: "SECHOST.dll" 0x00007ffba8bd0000-0x00007ffba8c6f000 modid: 40 C:\WINDOWS\System32\sechost.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\sechost.dll
+
+module load event: "msvcrt.dll" 0x00007ffba97a0000-0x00007ffba983e000 modid: 41 C:\WINDOWS\System32\msvcrt.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\msvcrt.dll
+WARNING: new/delete has no local wrapper => disabling mismatch detection for msvcrt.dll
+WARNING: new/delete has no local wrapper => disabling mismatch detection for msvcrt.dll
+WARNING: new == new[] => disabling mismatch detection for msvcrt.dll
+WARNING: new == new[] => disabling mismatch detection for msvcrt.dll
+WARNING: new/delete has no local wrapper => disabling mismatch detection for msvcrt.dll
+
+module load event: "WLDAP32.dll" 0x00007ffba9cd0000-0x00007ffba9d2e000 modid: 42 C:\WINDOWS\System32\WLDAP32.dll
+WARNING: unable to load symbols for C:\WINDOWS\System32\WLDAP32.dll
+
+module load event: "IMM32.dll" 0x00007ffba9de0000-0x00007ffba9e0f000 modid: 43 C:\WINDOWS\System32\IMM32.DLL
+
+module load event: "ntdll.dll" 0x00007ffba9e50000-0x00007ffbaa048000 modid: 44 C:\WINDOWS\SYSTEM32\ntdll.dll
+WARNING: fail to find call to RtlFreeStringRoutine
+WARNING: fail to find call to RtlFreeStringRoutine
+WARNING: fail to find call to RtlFreeStringRoutine
+
+NEW THREAD: main thread 5736
+
+
+Error #1: UNADDRESSABLE ACCESS beyond top of stack: reading 0x000000d781bffab0-0x000000d781bffab8 8 byte(s)
+# 0 .text    (0x00007ff7d6ee285b <trip.exe+0x2285b>) modid:3
+# 1 _pei386_runtime_relocator (0x00007ff7d6ee1d96 <trip.exe+0x21d96>) modid:3
+# 2 __tmainCRTStartup (0x00007ff7d6ec11a0 <trip.exe+0x11a0>) modid:3
+# 3 KERNEL32.dll!BaseThreadInitThunk (0x00007ffba8087374 <KERNEL32.dll+0x17374>) modid:35
+Note: @0:00:03.790 in thread 5736
+Note: 0x000000d781bffab0 refers to 776 byte(s) beyond the top of the stack 0x000000d781bffdb8
+Note: instruction: or     $0x0000000000000000 (%rcx) -> (%rcx)
+	error end
+
+Error #2: UNINITIALIZED READ: reading 0x000000d781bff3e4-0x000000d781bff3e8 4 byte(s) within 0x000000d781bff3e0-0x000000d781bff3e8
+# 0 system call NtQueryDirectoryFileEx parameter value #6
+# 1 KERNELBASE.dll!FindFirstFileExW (0x00007ffba78e8204 <KERNELBASE.dll+0x28204>) modid:31
+# 2 KERNELBASE.dll!FindFirstFileA (0x00007ffba79354af <KERNELBASE.dll+0x754af>) modid:31
+# 3 msvcrt.dll!stat64     (0x00007ffba97a8882 <msvcrt.dll+0x8882>) modid:41
+# 4 stat     (0x00007ff7d6ef157d <trip.exe+0x3157d>) modid:3
+# 5 main     (0x00007ff7d6ef34cf <trip.exe+0x334cf>) modid:3
+Note: @0:00:04.632 in thread 5736
+	error end
+WARNING: unhandled system calls found
+
+Error #3: UNINITIALIZED READ: reading 0x000000d781bff104-0x000000d781bff108 4 byte(s) within 0x000000d781bff100-0x000000d781bff108
+# 0 system call NtQueryDirectoryFileEx parameter value #6
+# 1 KERNELBASE.dll!FindFirstFileExW (0x00007ffba78e8204 <KERNELBASE.dll+0x28204>) modid:31
+# 2 KERNELBASE.dll!FindFirstFileA (0x00007ffba79354af <KERNELBASE.dll+0x754af>) modid:31
+# 3 msvcrt.dll!wfindnexti64 (0x00007ffba97a7396 <msvcrt.dll+0x7396>) modid:41
+# 4 readdir  (0x00007ff7d6ee2b3f <trip.exe+0x22b3f>) modid:3
+# 5 runTestsInDir (0x00007ff7d6ec174f <trip.exe+0x174f>) modid:3
+# 6 main     (0x00007ff7d6ef356d <trip.exe+0x3356d>) modid:3
+Note: @0:00:04.692 in thread 5736
+	error end
+
+Error #4: UNINITIALIZED READ: reading 0x000000d781bff454-0x000000d781bff458 4 byte(s) within 0x000000d781bff450-0x000000d781bff458
+# 0 system call NtQueryDirectoryFileEx parameter value #6
+# 1 KERNELBASE.dll!FindNextFileW  (0x00007ffba7910a9c <KERNELBASE.dll+0x50a9c>) modid:31
+# 2 KERNELBASE.dll!FindNextFileA  (0x00007ffba7910838 <KERNELBASE.dll+0x50838>) modid:31
+# 3 msvcrt.dll!wfindnexti64 (0x00007ffba97a74e2 <msvcrt.dll+0x74e2>) modid:41
+# 4 readdir  (0x00007ff7d6ee2bd7 <trip.exe+0x22bd7>) modid:3
+# 5 runTestsInDir (0x00007ff7d6ec174f <trip.exe+0x174f>) modid:3
+# 6 main     (0x00007ff7d6ef356d <trip.exe+0x3356d>) modid:3
+Note: @0:00:04.692 in thread 5736
+	error end
+
+Error #5: UNINITIALIZED READ: reading 0x000000d781bfef54-0x000000d781bfef58 4 byte(s) within 0x000000d781bfef50-0x000000d781bfef58
+# 0 system call NtQueryDirectoryFileEx parameter value #6
+# 1 KERNELBASE.dll!FindFirstFileExW (0x00007ffba78e8204 <KERNELBASE.dll+0x28204>) modid:31
+# 2 KERNELBASE.dll!FindFirstFileA (0x00007ffba79354af <KERNELBASE.dll+0x754af>) modid:31
+# 3 msvcrt.dll!stat64     (0x00007ffba97a8882 <msvcrt.dll+0x8882>) modid:41
+# 4 stat     (0x00007ff7d6ef157d <trip.exe+0x3157d>) modid:3
+# 5 runTestsInDir (0x00007ff7d6ec17ad <trip.exe+0x17ad>) modid:3
+# 6 main     (0x00007ff7d6ef356d <trip.exe+0x3356d>) modid:3
+Note: @0:00:04.708 in thread 5736
+	error end
+
+Error #6: UNADDRESSABLE ACCESS beyond top of stack: reading 0x000000d781bffbf0-0x000000d781bffbf8 8 byte(s)
+# 0 .text    (0x00007ff7d6ee285b <trip.exe+0x2285b>) modid:3
+# 1 __pformat_int.isra.0 (0x00007ff7d6ee33f9 <trip.exe+0x233f9>) modid:3
+# 2 __mingw_pformat (0x00007ff7d6ee51d4 <trip.exe+0x251d4>) modid:3
+# 3 __mingw_printf (0x00007ff7d6ee5b9b <trip.exe+0x25b9b>) modid:3
+# 4 main     (0x00007ff7d6ef351b <trip.exe+0x3351b>) modid:3
+Note: @0:00:04.816 in thread 5736
+Note: 0x000000d781bffbf0 refers to 8 byte(s) beyond the top of the stack 0x000000d781bffbf8
+Note: instruction: or     $0x0000000000000000 (%rcx) -> (%rcx)
+	error end
+
+DUPLICATE ERROR COUNTS:
+	Error #   1:      2
+	Error #   2:      3
+	Error #   3:      3
+	Error #   4:      6
+	Error #   5:     45
+	Error #   6:      6
+
+SUPPRESSIONS USED:
+	    26x: OpenSSL optimized asm - stack probing (libcrypto)
+	    14x: stat64 register read after FindFirstFile/FindNextFile calls
+	    14x: rmdir/stat64 internal register read
+	    26x: FileTimeToSystemTime internals inside stat64
+	    87x: RtlInitUnicodeString during FindFirstFileA path setup
+	     5x: CRT readdir() via FindNextFileA - WIN32_FIND_DATA fields
+	    16x: CRT stat() via FindFirstFileA - WIN32_FIND_DATA fields
+
+ERRORS FOUND:
+      2 unique,     8 total unaddressable access(es)
+      4 unique,    57 total uninitialized access(es)
+      0 unique,     0 total invalid heap argument(s)
+      0 unique,     0 total GDI usage error(s)
+      0 unique,     0 total handle leak(s)
+      0 unique,     0 total warning(s)
+      0 unique,     0 total,      0 byte(s) of leak(s)
+      0 unique,     0 total,      0 byte(s) of possible leak(s)
+ERRORS IGNORED:
+    188 user-suppressed,     0 default-suppressed error(s)
+      0 user-suppressed,     0 default-suppressed leak(s)
+    571 ignored assumed-innocuous system leak(s)
+      6 unique,     8 total,    254 byte(s) of still-reachable allocation(s)
+         (re-run with "-show_reachable" for details)
+Details: C:\Users\resty\Desktop\trip_patched_updated\trip_patched\drmemory_logs\DrMemory-trip.exe.5156.000\results.txt
+
+DUPLICATE POTENTIAL ERROR COUNTS:
+
+POTENTIAL ERRORS FOUND:
+      0 unique,     0 total potential unaddressable access(es)
+      0 unique,     0 total potential uninitialized access(es)
+      0 unique,     0 total potential invalid heap argument(s)
+      0 unique,     0 total potential GDI usage error(s)
+      0 unique,     0 total potential handle leak(s)
+      0 unique,     0 total potential warning(s)
+      0 unique,     0 total,      0 byte(s) of potential leak(s)
+      0 unique,     0 total,      0 byte(s) of potential possible leak(s)
+Details: C:\Users\resty\Desktop\trip_patched_updated\trip_patched\drmemory_logs\DrMemory-trip.exe.5156.000\potential_errors.txt
+Exiting @0:00:05.507 in thread 5736
+LOG END

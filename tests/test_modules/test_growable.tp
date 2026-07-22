@@ -1,0 +1,32 @@
+fn countdown(n)
+    if n <= 0
+        return 0
+    return countdown(n - 1)
+
+outn(countdown(50000))
+
+fn makeAdders()
+    let fns = []
+    let i = 0
+    while i < 3
+        let captured = i
+        fn adder()
+            return captured
+        fns.append(adder)
+        i = i + 1
+    return fns
+
+let adders = makeAdders()
+outn(adders[0]())
+outn(adders[1]())
+outn(adders[2]())
+
+fn square(n)
+    return n * n
+
+fn cube(n)
+    return n * n * n
+
+let fns = [square, cube]
+outn(fns[0](5))
+outn(fns[1](3))

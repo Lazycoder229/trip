@@ -1,0 +1,10 @@
+outn("line1\nline2")
+outn("tab\there")
+outn("quote\"inside\"")
+let nl = '\n'
+let tab = '\t'
+outn(ord(nl))
+outn(ord(tab))
+outn(ord('\\'))
+outn(ord('\''))
+outn("weird \q escape")

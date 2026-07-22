@@ -1,0 +1,9 @@
+writeFile("trip_demo.txt", "Hello from Trip!\nSecond line.")
+outn(readFile("trip_demo.txt"))
+
+appendFile("trip_demo.txt", "\nThird line.")
+outn(readFile("trip_demo.txt"))
+
+outn(fileExists("trip_demo.txt"))
+outn(deleteFile("trip_demo.txt"))
+outn(fileExists("trip_demo.txt"))

@@ -1,0 +1,45 @@
+# process.tp — read config, process records, write JSON output
+
+fn safeParse(raw)
+    try
+        return jsonParse(raw)
+    catch e
+        outn(f"JSON parse error: {e}")
+        return nil
+
+# Load config from a file next to this script
+let configRaw = readFile("config.json")
+let config = safeParse(configRaw)
+if config == nil
+    outn("Failed to load config.json")
+    return
+
+let threshold = config.get("threshold", 80)
+let outputFile = config.get("output", "results.json")
+outn(f"Threshold: {threshold}  Output: {outputFile}")
+
+# Simulated input records (could also come from readFile + jsonParse)
+let records = [
+    {"id": 1, "name": "Alice", "score": 95},
+    {"id": 2, "name": "Bob",   "score": 72},
+    {"id": 3, "name": "Carol", "score": 88},
+    {"id": 4, "name": "Dave",  "score": 61}
+]
+
+# Filter records that meet the threshold
+let passing = []
+for r in records
+    if r["score"] >= threshold
+        passing.append(r)
+
+outn(f"{len(passing)} of {len(records)} records passed")
+
+# Write results to disk
+let output = {
+    "generatedAt": dateFormat(time(), "%Y-%m-%d %H:%M:%S"),
+    "threshold": threshold,
+    "count": len(passing),
+    "results": passing
+}
+writeFile(outputFile, jsonStringify(output))
+outn(f"Results written to {outputFile}")

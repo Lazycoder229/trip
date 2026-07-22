@@ -1,0 +1,6 @@
+Dr. Memory version 2.6.0 build 0 built on Sep 21 2023 17:38:58
+start time: 3730319:24:34.398 == 23:24:34.398 07/21/2026
+Recorded 124 suppression(s) from default C:\Program Files (x86)\Dr. Memory\bin64\suppress-default.txt
+Recorded 10 suppression(s) from user C:\Users\resty\Desktop\trip_patched_updated\trip_patched\drmemory-suppressions.txt
+Syscall mismatch detected.  Running on unknown kernel version!
+System call information is missing for this operating system: WinVer=105;Rel=2009;Build=19045;Edition=Professional. Restarting to trigger auto-generation of system call information. Re-run with -ignore_kernel to attempt to continue instead.

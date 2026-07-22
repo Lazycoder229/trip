@@ -1,0 +1,15 @@
+# server.tp
+let server = tcpListen(8080)
+outn("Listening on http://localhost:8080")
+
+while true
+    let client = tcpAccept(server)
+    let raw = tcpRead(client)
+    if raw == nil or len(raw) == 0
+        tcpClose(client)
+        continue
+    let req = httpParse(raw)
+    let body = f"Hello from Trip! Path: {req[\"path\"]}"
+    let res = httpResponse(200, {"Content-Type": "text/plain"}, body)
+    tcpWrite(client, res)
+    tcpClose(client)

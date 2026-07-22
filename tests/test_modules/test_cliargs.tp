@@ -1,0 +1,16 @@
+outn(scriptPath())
+
+let cliArgs = args()
+outn("Number of extra args: " + str(len(cliArgs)))
+let i = 0
+while i < len(cliArgs)
+    outn("  arg " + str(i) + ": " + cliArgs[i])
+    i = i + 1
+
+let home = getEnv("HOME")
+if home != nil
+    outn("HOME is set")
+else
+    outn("HOME is not set")
+
+outn(getEnv("DEFINITELY_NOT_SET_XYZ"))

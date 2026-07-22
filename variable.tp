@@ -1,0 +1,66 @@
+# variables.tp
+let x = 10          # mutable variable
+const PI = 3.14159  # immutable constant
+
+x = 20              # reassign
+x += 3              # compound assignment: x is now 23
+x++                 # increment:           x is now 24
+x--                 # decrement:           x is now 23
+
+outn(x)    # 23
+outn(PI)   # 3.14159
+
+# This is a single-line comment
+
+/* This is a
+   multi-line comment */
+   # strings_regular.tp
+let msg     = "Hello, world!"
+let path    = "C:\\Users\\trip"
+let newline = "Line one\nLine two"
+
+outn(msg)
+outn(path)
+outn(newline)
+
+# strings_multiline.tp
+let poem = """
+    Roses are red,
+    Violets are blue,
+    Trip is expressive,
+    And so are you.
+    """
+
+outn(poem)
+
+# strings_fstring.tp
+let name = "Alice"
+let age  = 30
+
+outn(f"Hello {name}, you are {age} years old")
+# Hello Alice, you are 30 years old
+
+outn(f"5 + 5 = {5 + 5}")
+# 5 + 5 = 10
+
+# chars.tp
+let letter = 'A'
+let tab    = '\t'
+let quote  = '\''
+
+outn(letter)         # A
+outn(type(letter))   # char
+outn(ord(letter))    # 65
+
+# closures_counter.tp
+fn makeCounter()
+    let count = 0
+    fn inc()
+        count += 1
+        return count
+    return inc
+
+let c = makeCounter()
+outn(c())   # 1
+outn(c())   # 2
+outn(c())   # 3

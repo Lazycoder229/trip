@@ -1,0 +1,38 @@
+try
+    let content = readFile("/tmp/definitely_missing_xyz.txt")
+    outn(content)
+catch e
+    outn("Could not read file: " + e)
+outn("Program continues normally.")
+
+try
+    outn(10 / 0)
+catch e
+    outn("Caught: " + e)
+
+try
+    throw "custom error"
+catch e
+    outn("Caught: " + e)
+
+fn risky(n)
+    return 100 / n
+
+fn wrapper(n)
+    return risky(n)
+
+try
+    outn(wrapper(0))
+catch e
+    outn("Caught from deep call: " + e)
+
+try
+    try
+        throw "inner error"
+    catch e1
+        outn("Inner caught: " + e1)
+        throw "rethrown: " + e1
+catch e2
+    outn("Outer caught: " + e2)
+
+outn("all done")

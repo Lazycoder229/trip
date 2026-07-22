@@ -1,0 +1,10 @@
+fn countUp(name, n)
+    let i = 0
+    while i < n
+        outn(f"{name}: {i}")
+        yield()   # give other fibers a turn
+        i++
+
+spawn countUp("A", 3)
+spawn countUp("B", 3)
+# Output interleaves A and B

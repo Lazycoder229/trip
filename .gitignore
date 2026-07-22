@@ -1,0 +1,14 @@
+# folders
+New folder/
+dist/
+build/
+
+
+# sensitive files
+key.pem
+cert.pem
+
+# markdown files
+ss.md
+postversion1.md
+src.zip/

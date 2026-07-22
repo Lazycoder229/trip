@@ -1,0 +1,18 @@
+# Getting to know what is TRIP PROGRAMMING LANGUAGE
+
+# Trip Language is a lightweight interpreted scripting Language.
+# It is inspired by the Lox Language from Crafting Interpreters by Robert Noyrmens.
+# The syntax of Trip lang is inspired also same  as  python readability syntax. 
+
+#Features
+# Readability - No semicolons, no brackets, just proper indentation
+# TTVM (Tiny Trip virtual Machine) - Fork of clox. Compiled to bytecode then run on an stack VM.
+# Built in Modules - http,json,tls,socket, file system
+# Non-blocking I/O - All I/O is aysnc under the hood
+# Concurrent - spawn, yiled, waitAll
+# Support OOP 
+# Embedable
+
+# Why use Trip?
+# R
+

@@ -1,0 +1,44 @@
+# chat.tp — concurrent broadcast chat server
+
+let server = tcpListen(9000)
+outn("Chat server listening on port 9000")
+outn("Connect with: nc localhost 9000")
+
+let clients = []   # shared list of all connected client sockets
+
+fn broadcast(sender, message)
+    let i = 0
+    while i < len(clients)
+        let c = clients[i]
+        if c != sender
+            tcpWrite(c, message)
+        i++
+
+fn removeClient(client)
+    let idx = 0
+    while idx < len(clients)
+        if clients[idx] == client
+            clients.remove(idx)
+            break
+        idx++
+
+fn handleClient(client)
+    clients.append(client)
+    broadcast(client, "A new user joined\n")
+
+    try
+        while true
+            let msg = tcpRead(client, 1024, 30000)
+            if msg == nil or len(msg) == 0
+                break
+            broadcast(client, msg)
+    catch e
+        tcpWrite(client, "You've been idle too long, disconnecting...\n")
+
+    removeClient(client)
+    broadcast(client, "A user left\n")
+    tcpClose(client)
+
+while true
+    let client = tcpAccept(server)
+    spawn handleClient(client)

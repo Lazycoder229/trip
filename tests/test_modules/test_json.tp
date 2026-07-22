@@ -1,0 +1,46 @@
+# ── jsonParse: primitives ────────────────────────────────────────────────────
+let n = jsonParse("42")
+outn(n)              # 42
+
+let b = jsonParse("true")
+outn(b)              # true
+
+let s = jsonParse("\"hello\"")
+outn(s)              # hello
+
+let nil_val = jsonParse("null")
+outn(nil_val)        # nil
+
+# ── jsonParse: object ────────────────────────────────────────────────────────
+let person = jsonParse("{\"name\": \"Trip\", \"version\": 1, \"ready\": true}")
+outn(person["name"])     # Trip
+outn(person["version"])  # 1
+outn(person["ready"])    # true
+
+# ── jsonParse: array ─────────────────────────────────────────────────────────
+let arr = jsonParse("[10, 20, 30]")
+outn(arr[0])   # 10
+outn(arr[1])   # 20
+outn(arr[2])   # 30
+
+# ── jsonParse: nested ────────────────────────────────────────────────────────
+let data = jsonParse("{\"user\": {\"name\": \"Lazy\", \"scores\": [99, 100]}}")
+outn(data["user"]["name"])        # Lazy
+outn(data["user"]["scores"][1])   # 100
+
+# ── jsonStringify ────────────────────────────────────────────────────────────
+let obj = {"lang": "Trip", "cool": true, "ver": 2}
+let json_str = jsonStringify(obj)
+outn(type(json_str))   # string
+
+# round-trip test
+let back = jsonParse(json_str)
+outn(back["lang"])     # Trip
+outn(back["cool"])     # true
+outn(back["ver"])      # 2
+
+# stringify array
+let list_str = jsonStringify([1, 2, 3])
+outn(list_str)         # [1,2,3]
+
+outn("JSON tests done")
