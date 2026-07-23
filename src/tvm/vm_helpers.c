@@ -82,6 +82,43 @@ char* resolveFilePath(const char* givenPath) {
         if (!rawPath) { fprintf(stderr, "[trip] OOM in resolveFilePath\n"); exit(1); }
         strcpy(rawPath, canonical);
     }
+#elif defined(_WIN32)
+    if (g_scriptPath != NULL) {
+        char tmp[MAX_PATH];
+        size_t spLen = strlen(g_scriptPath);
+        if (spLen >= MAX_PATH) { free(rawPath); return NULL; }
+        memcpy(tmp, g_scriptPath, spLen + 1);
+        char* lastFwd  = strrchr(tmp, '/');
+        char* lastBack = strrchr(tmp, '\\');
+        char* lastSep = (lastFwd > lastBack) ? lastFwd : lastBack;
+        if (lastSep) *lastSep = '\0';
+        else { tmp[0] = '.'; tmp[1] = '\0'; }
+
+        // _fullpath() normalizes "." / ".." components and does not require
+        // the target to exist, so it works uniformly for reads, writes, and
+        // deletes of files that may not be present yet.
+        char scriptDirFull[MAX_PATH];
+        if (!_fullpath(scriptDirFull, tmp, MAX_PATH)) { free(rawPath); return NULL; }
+
+        char canonical[MAX_PATH];
+        if (!_fullpath(canonical, rawPath, MAX_PATH)) { free(rawPath); return NULL; }
+
+        size_t sdLen = strlen(scriptDirFull);
+        if (sdLen > 0 && scriptDirFull[sdLen - 1] == '\\') {
+            scriptDirFull[sdLen - 1] = '\0';
+            sdLen--;
+        }
+
+        // Windows paths are case-insensitive, so compare case-insensitively.
+        bool inSandbox = (_strnicmp(canonical, scriptDirFull, sdLen) == 0) &&
+                         (canonical[sdLen] == '\\' || canonical[sdLen] == '\0');
+        if (!inSandbox) { free(rawPath); return NULL; }
+
+        free(rawPath);
+        rawPath = malloc(strlen(canonical) + 1);
+        if (!rawPath) { fprintf(stderr, "[trip] OOM in resolveFilePath\n"); exit(1); }
+        strcpy(rawPath, canonical);
+    }
 #endif
     return rawPath;
 }

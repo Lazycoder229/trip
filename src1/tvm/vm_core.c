@@ -1,4 +1,5 @@
 #include "tvm.h"
+#include "../compiler/compiler.h"
 
 VM vm;
 int g_scriptArgc = 0;

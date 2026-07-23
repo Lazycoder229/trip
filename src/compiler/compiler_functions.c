@@ -205,10 +205,14 @@ void lambdaExpr(void) {
         // Arrow body: compile the expression, then emit an explicit return.
         expression();
         emitByte(OP_RETURN_VAL);
+        lastExprEndedInBlock = false;
     } else if (parser.current.type == TOKEN_NEWLINE) {
         // Block body — same as a named function.
         skipNewlines();
         block();
+        // block() already consumed the closing DEDENT for us; tell the
+        // enclosing statement() not to also demand a NEWLINE/DEDENT.
+        lastExprEndedInBlock = true;
     } else {
         errorAt(&parser.current,
                 "Expect '=>' or newline+indented block after lambda parameters.");

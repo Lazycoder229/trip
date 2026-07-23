@@ -57,6 +57,7 @@ extern Chunk* topLevelChunk;
 // Set true by `out`/`outn` calls so statement() knows not to emit an extra
 // OP_POP for a call whose result was never pushed.
 extern bool lastExprWasVoid;
+extern bool lastExprEndedInBlock;
 
 // ── Local variable / upvalue tracking ─────────────────────────────────────
 #define MAX_LOCALS 256

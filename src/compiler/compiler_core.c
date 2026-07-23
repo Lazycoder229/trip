@@ -10,6 +10,7 @@ Parser parser;
 Chunk* compilingChunk;
 Chunk* topLevelChunk = NULL;
 bool   lastExprWasVoid = false;
+bool   lastExprEndedInBlock = false;
 
 // ── Error reporting ────────────────────────────────────────────────────────
 void errorAt(Token* token, const char* message) {

@@ -614,6 +614,7 @@ void statement(void) {
         return;
     } else {
         lastExprWasVoid = false;
+        lastExprEndedInBlock = false;
         expression();
         if (!lastExprWasVoid) {
             emitByte(OP_POP);
@@ -621,7 +622,11 @@ void statement(void) {
     }
     // Consume trailing newline. DEDENT is left for the caller to handle
     // (block() / whileStatement() detect it as the end of their body).
-    if (parser.current.type == TOKEN_NEWLINE) {
+    // If the expression was a lambda with a block body, block() already
+    // consumed the closing DEDENT itself — nothing left to check here.
+    if (lastExprEndedInBlock) {
+        // already terminated
+    } else if (parser.current.type == TOKEN_NEWLINE) {
         advance();
     } else if (parser.current.type != TOKEN_EOF &&
                parser.current.type != TOKEN_DEDENT) {

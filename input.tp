@@ -1,2 +1,0 @@
-let name = input("Enter your name: ")
-outn("Hello, " + name)
