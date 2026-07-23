@@ -44,7 +44,21 @@ void vmInternString(ObjString* string) {
 void tripCloseSocketHandle(TripSocketHandle handle) {
     (void)handle;
 }
-
+// Real impl lives in src/tvm/db_mysql.c; no MySQL handles exist in these tests.
+void tripMysqlCloseHandle(void* conn) {
+    (void)conn;
+}
+// Stub for prepared-statement GC teardown (real impl in src/tvm/db_mysql.c).
+// These test binaries link object.c without db_mysql.c, so the linker needs
+// a no-op here — no MYSQL_STMT* ever exists in table/memory/compiler tests.
+void tripMysqlCloseStmt(void* stmt) {
+    (void)stmt;
+}
+// Stub for connection-pool GC teardown (real impl in src/tvm/db_mysql.c).
+// Same reasoning as above — no MysqlPool* ever exists in these test binaries.
+void tripMysqlFreePool(void* pool) {
+    (void)pool;
+}
 // Real impl lives in src/tvm/vm_core.c via vmSetArgs(); no script is
 // ever "run" by these tests, so there's no path to report.
 const char* vmGetScriptPath(void) {

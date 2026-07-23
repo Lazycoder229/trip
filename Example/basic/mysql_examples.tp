@@ -1,0 +1,291 @@
+#─────────────────────────────────────────────────────────────────────────────
+# mysql_examples.tp — exercises every new MySQL builtin
+#
+# Assumes a local MySQL/MariaDB with:
+#  database : testdb
+#   table    : users  (id BIGINT AUTO_INCREMENT PK, name VARCHAR(255) NULL,
+#                       email VARCHAR(255) NOT NULL, password VARCHAR(255) NOT NULL,
+#                       age INT NULL, created_at TIMESTAMP, updated_at TIMESTAMP)
+#  table    : orders (id INT AUTO_INCREMENT PK, user_id INT, amount DECIMAL)
+# ─────────────────────────────────────────────────────────────────────────────
+
+const HOST = "127.0.0.1"
+const USER = "root"
+const PASS = ""
+const DB   = "testlite"
+
+#─────────────────────────────────────────────────────────────────────────────
+#  Helper — print a result list nicely
+#─────────────────────────────────────────────────────────────────────────────
+fn printRows(rows)
+    if rows == nil
+        outn(nil)
+        return
+    for row in rows
+        out(" ")
+        outn(row)
+    if rows.len() == 0
+        outn(empty)
+
+#═════════════════════════════════════════════════════════════════════════════
+#1.  mysqlPing — check server reachability
+#═════════════════════════════════════════════════════════════════════════════
+outn("\n── 1. mysqlPing ──")
+let conn = mysqlConnect(HOST, USER, PASS, DB)
+
+let alive = mysqlPing(conn)
+#outn("Server reachable: " + str(alive))       # true
+
+mysqlClose(conn)
+ #Ping on a closed connection returns false, not an error
+let conn2 = mysqlConnect(HOST, USER, PASS, DB)
+mysqlClose(conn2)
+outn("Ping after close: " + str(mysqlPing(conn2)))   # false
+
+
+#═════════════════════════════════════════════════════════════════════════════
+#  2.  mysqlAffectedRows — rows touched by the last DML statement
+# ═════════════════════════════════════════════════════════════════════════════
+outn("\n── 2. mysqlAffectedRows ──")
+let c = mysqlConnect(HOST, USER, PASS, DB)
+
+mysqlQuery(c, "DELETE FROM users WHERE name LIKE 'Example%'")
+outn("Rows deleted: " + str(mysqlAffectedRows(c)))   # 0 on first run, N on reruns
+
+mysqlClose(c)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  3.  mysqlBegin / mysqlCommit / mysqlRollback — transactions
+# ═════════════════════════════════════════════════════════════════════════════
+outn("\n── 3. Transactions ──")
+let tc = mysqlConnect(HOST, USER, PASS, DB)
+
+#── 3a. Commit path ─────────────────────────────────────────────────────────
+mysqlBegin(tc)
+mysqlQuery(tc, "INSERT INTO users (name, email, password) VALUES ('Alice', 'alice@example.com', 'hashed_pw_1')")
+mysqlQuery(tc, "INSERT INTO users (name, email, password) VALUES ('Bob',   'bob@example.com',   'hashed_pw_2')")
+mysqlCommit(tc)
+
+let after = mysqlQuery(tc, "SELECT * FROM users WHERE name IN ('Alice','Bob')")
+outn("After commit:")
+printRows(after)
+
+#── 3b. Rollback path ───────────────────────────────────────────────────────
+mysqlBegin(tc)
+mysqlQuery(tc, "INSERT INTO users (name, email, password) VALUES ('ShouldDisappear', 'ghost@example.com', 'n/a')")
+let check = mysqlQuery(tc, "SELECT COUNT(*) as n FROM users WHERE name='ShouldDisappear'")
+outn("Inside txn, visible to same conn: " + str(check[0]["n"]))
+
+mysqlRollback(tc)
+
+let after2 = mysqlQuery(tc, "SELECT COUNT(*) as n FROM users WHERE name='ShouldDisappear'")
+outn("After rollback: " + str(after2[0]["n"]))   # 0
+
+#── 3c. try/catch pattern (rollback on error) ───────────────────────────────
+mysqlBegin(tc)
+try
+    mysqlQuery(tc, "INSERT INTO users (name, email, password) VALUES ('Carol', 'carol@example.com', 'hashed_pw_3')")
+    mysqlQuery(tc, "INSERT INTO nonexistent_table (x) VALUES (1)")   # will error
+    mysqlCommit(tc)
+catch err
+    outn("Caught error, rolling back: " + str(err))
+    mysqlRollback(tc)
+
+mysqlClose(tc)
+
+
+#═════════════════════════════════════════════════════════════════════════════
+# 4.  mysqlInsertBatch — single-round-trip bulk insert
+#═════════════════════════════════════════════════════════════════════════════
+outn("\n── 4. mysqlInsertBatch ──")
+let bc = mysqlConnect(HOST, USER, PASS, DB)
+
+let newUsers = [
+    {"name": "Example_Dave",  "email": "dave@example.com",  "password": "hashed_pw_dave"},
+    {"name": "Example_Eve",   "email": "eve@example.com",   "password": "hashed_pw_eve"},
+    {"name": "Example_Frank", "email": "frank@example.com", "password": "hashed_pw_frank"},
+    {"name": "Example_Grace", "email": "grace@example.com", "password": "hashed_pw_grace"},
+]
+
+let inserted = mysqlInsertBatch(bc, "users", newUsers)
+outn("Rows inserted: " + str(inserted))
+
+# NULL values in batch — age omitted (nil) → stored as NULL (email/password are NOT NULL in this schema, age is nullable)
+let withNulls = [
+    {"name": "Example_Hank", "email": "hank@example.com", "password": "hashed_pw_hank", "age": nil},
+    {"name": "Example_Ivy",  "email": "ivy@example.com",  "password": "hashed_pw_ivy",  "age": 31},
+]
+let ins2 = mysqlInsertBatch(bc, "users", withNulls)
+outn("Rows with nulls inserted: " + str(ins2))
+
+mysqlClose(bc)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 5.  mysqlQueryMulti — multiple result sets in one call
+#      (requires CLIENT_MULTI_STATEMENTS on the connection;
+#       works with MariaDB's default client flags)
+# ═════════════════════════════════════════════════════════════════════════════
+outn("\n── 5. mysqlQueryMulti ──")
+let mc = mysqlConnect(HOST, USER, PASS, DB)
+
+let multiSql = "SELECT id, name FROM users LIMIT 3; SELECT COUNT(*) as total FROM users;"
+
+let results = mysqlQueryMulti(mc, multiSql)
+outn("Number of result sets: " + str(results.len()))   #2
+
+outn("First set (up to 3 users):")
+printRows(results[0])
+
+outn("Second set (total count):")
+printRows(results[1])   # [{total: N}]
+
+# Useful for stored procedures:
+#let spResults = mysqlQueryMulti(mc, "CALL get_user_summary(10)")
+#printRows(spResults[0])
+
+mysqlClose(mc)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  6.  mysqlPrepare / mysqlExecute / mysqlStmtClose — prepared statements
+#═════════════════════════════════════════════════════════════════════════════
+outn("\n── 6. Prepared statements ──")
+let pc = mysqlConnect(HOST, USER, PASS, DB)
+
+# ── 6a. SELECT with parameters ──────────────────────────────────────────────
+let selectStmt = mysqlPrepare(pc, "SELECT id, name, email FROM users WHERE email LIKE ? ORDER BY id")
+let exampleUsers = mysqlExecute(selectStmt, ["%@example.com"])
+outn("Users with an @example.com email:")
+printRows(exampleUsers)
+mysqlStmtClose(selectStmt)
+
+#── 6b. INSERT — reuse same statement for multiple rows ──────────────────────
+# orders isn't guaranteed to exist in this DB — create it if missing
+mysqlQuery(pc, "CREATE TABLE IF NOT EXISTS orders (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, amount DECIMAL(10,2) NOT NULL)")
+
+let insertStmt = mysqlPrepare(pc, "INSERT INTO orders (user_id, amount) VALUES (?, ?)")
+
+let orderData = [
+    [1, 99.99],
+    [1, 14.50],
+    [2, 250.00],
+]
+for row in orderData
+    let affected = mysqlExecute(insertStmt, row)
+    outn("Order inserted, affected: " + str(affected))   #1 each
+
+mysqlStmtClose(insertStmt)
+
+#── 6c. NULL parameter ───────────────────────────────────────────────────────
+let nullableStmt = mysqlPrepare(pc, "INSERT INTO users (name, email, password, age) VALUES (?, ?, ?, ?)")
+mysqlExecute(nullableStmt, ["Example_NoAge", "noage@example.com", "hashed_pw_noage", nil])   # nil → SQL NULL
+outn("Inserted user with NULL age")
+mysqlStmtClose(nullableStmt)
+
+#── 6d. Fetch last insert id after prepared INSERT ──────────────────────────
+let idStmt = mysqlPrepare(pc, "INSERT INTO users (name, email, password) VALUES (?, ?, ?)")
+mysqlExecute(idStmt, ["Example_Last", "last@example.com", "hashed_pw_last"])
+outn("Last insert id: " + str(mysqlLastInsertId(pc)))
+mysqlStmtClose(idStmt)
+
+mysqlClose(pc)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#7.  Connection pool — mysqlPoolCreate / Get / Release / Close
+# ═════════════════════════════════════════════════════════════════════════════
+outn("\n── 7. Connection pool ──")
+
+# Create a pool of up to 5 connections
+let pool = mysqlPoolCreate(HOST, USER, PASS, DB, 5)
+outn("Pool created")
+
+# ── 7a. Check out a connection, use it, return it ───────────────────────────
+let conn_a = mysqlPoolGet(pool)
+let rows_a = mysqlQuery(conn_a, "SELECT COUNT(*) as n FROM users")
+outn("Total users (conn_a): " + str(rows_a[0]["n"]))
+mysqlPoolRelease(pool, conn_a)
+outn("conn_a returned to pool")
+
+# ── 7b. Check out multiple connections concurrently ─────────────────────────
+let conn_b = mysqlPoolGet(pool)
+let conn_c = mysqlPoolGet(pool)
+
+let rb = mysqlQuery(conn_b, "SELECT name FROM users ORDER BY id LIMIT 2")
+let rc = mysqlQuery(conn_c, "SELECT name FROM users ORDER BY id DESC LIMIT 2")
+
+outn("conn_b first 2:")
+printRows(rb)
+outn("conn_c last 2:")
+printRows(rc)
+
+mysqlPoolRelease(pool, conn_b)
+mysqlPoolRelease(pool, conn_c)
+
+# ── 7c. Pool + transaction ───────────────────────────────────────────────────
+outn("\nPool transaction example:")
+let txConn = mysqlPoolGet(pool)
+
+mysqlBegin(txConn)
+mysqlQuery(txConn, "INSERT INTO users (name, email, password) VALUES ('Example_PoolTxn', 'pooltxn@example.com', 'hashed_pw_pooltxn')")
+let pid = mysqlLastInsertId(txConn)
+outn("Inserted user id in txn: " + str(pid))
+mysqlCommit(txConn)
+
+mysqlPoolRelease(pool, txConn)
+#mysqlPoolRelease auto-resets auto-commit, so the next borrower starts clean
+
+#── 7d. Pool + prepared statement ───────────────────────────────────────────
+outn("\nPool + prepared statement:")
+let pconn = mysqlPoolGet(pool)
+let pstmt  = mysqlPrepare(pconn, "SELECT name FROM users WHERE id = ?")
+let found  = mysqlExecute(pstmt, [pid])
+outn("Found by id " + str(pid) + ": " + str(found[0]["name"]))
+mysqlStmtClose(pstmt)
+mysqlPoolRelease(pool, pconn)
+
+#── 7e. Ping via pool (health-check before use) ──────────────────────────────
+outn("\nHealth check loop:")
+let hConn = mysqlPoolGet(pool)
+if mysqlPing(hConn)
+    outn("Connection healthy, proceeding")
+    mysqlQuery(hConn, "SELECT 1")
+else
+    outn("Connection dead — handle error")
+mysqlPoolRelease(pool, hConn)
+
+#── 7f. mysqlInsertBatch through pool ───────────────────────────────────────
+outn("\nBatch insert through pool:")
+let bconn = mysqlPoolGet(pool)
+let batchRows = [
+    {"name": "Example_Pool1", "email": "pool1@example.com", "password": "hashed_pw_pool1"},
+    {"name": "Example_Pool2", "email": "pool2@example.com", "password": "hashed_pw_pool2"},
+]
+let bn = mysqlInsertBatch(bconn, "users", batchRows)
+outn("Batch inserted via pool: " + str(bn))
+mysqlPoolRelease(pool, bconn)
+
+#── 7g. Close the whole pool ────────────────────────────────────────────────
+mysqlPoolClose(pool)
+outn("Pool closed — all connections freed")
+
+
+#═════════════════════════════════════════════════════════════════════════════
+# 8.  mysqlAffectedRows after batch insert (confirm row counts)
+#═════════════════════════════════════════════════════════════════════════════
+outn("\n── 8. Cleanup + final count ──")
+let fc = mysqlConnect(HOST, USER, PASS, DB)
+
+mysqlQuery(fc, "DELETE FROM users WHERE name LIKE 'Example%'")
+outn("Cleaned up example rows: " + str(mysqlAffectedRows(fc)))
+
+mysqlQuery(fc, "DELETE FROM orders")
+outn("Cleaned up orders: " + str(mysqlAffectedRows(fc)))
+
+let finalCount = mysqlQuery(fc, "SELECT COUNT(*) as n FROM users")
+outn("Remaining users: " + str(finalCount[0]["n"]))
+
+mysqlClose(fc)
+outn("\nAll done.")

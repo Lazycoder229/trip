@@ -142,7 +142,15 @@ void tryStatement(void) {
 
     // ── Patch inner handler's catch offset ───────────────────────────────
     int innerCatchStart  = compilingChunk->count;
-    int innerCatchOffset = innerCatchStart - innerCatchPh - 2;
+    // NOTE: OP_TRY_BEGIN's operand is 4 bytes (catchOffset short + finallyOffset
+    // short). vm_exec.c's OP_TRY_BEGIN handler reads BOTH shorts (advancing
+    // frame->ip by 4 past innerCatchPh) before computing
+    // h->catchIp = frame->ip + catchOffset. So this must subtract 4 (the full
+    // operand width), not 2 — subtracting only 2 left catchIp landing 2 bytes
+    // into the catch block instead of at its start, executing mid-instruction
+    // garbage bytecode (surfaced as random-looking runtime errors depending on
+    // what bytes happened to follow).
+    int innerCatchOffset = innerCatchStart - innerCatchPh - 4;
     if (innerCatchOffset > UINT16_MAX) {
         errorAt(&parser.previous, "Too much code in try block."); return;
     }
@@ -191,7 +199,8 @@ void tryStatement(void) {
     // ── Patch outer handler's catch offset (finally entry point) ─────────
     if (hasFinally) {
         int outerCatchStart  = compilingChunk->count;
-        int outerCatchOffset = outerCatchStart - outerCatchPh - 2;
+        // Same 4-byte-operand reasoning as innerCatchOffset above.
+        int outerCatchOffset = outerCatchStart - outerCatchPh - 4;
         if (outerCatchOffset > UINT16_MAX) {
             errorAt(&parser.previous, "Too much code in try/catch block."); return;
         }

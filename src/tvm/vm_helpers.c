@@ -147,6 +147,11 @@ void printValue(Value value) {
                        (sock->isListening ? "listening" : "connected"));
                 break;
             }
+            case OBJ_DB_CONN: {
+                ObjDBConn* db = (ObjDBConn*)obj;
+                printf("<mysql connection %s>", db->closed ? "closed" : "open");
+                break;
+            }
             case OBJ_CLASS: {
                 printf("<class %s>", ((ObjClass*)obj)->name->chars);
                 break;
@@ -359,14 +364,6 @@ InterpretResult raiseError(const char* fmt, ...) {
         unwindToHandler((Value){VAL_OBJ, {.obj = (Obj*)msg}});
         return INTERPRET_HANDLED_ERROR;
     }
-    // Uncaught within this fiber — stash the value so a fiber waiting on
-    // us via waitAll() can re-raise it in its own try/catch instead of
-    // the crash silently surfacing only as a program-exit code.
-    {
-        ObjString* msg = copyString(buf, (int)strlen(buf));
-        vm.lastCrashError = (Value){VAL_OBJ, {.obj = (Obj*)msg}};
-        vm.hasCrashError = true;
-    }
     int line = -1;
     if (vm.current->frameCount > 0) {
         CallFrame* frame = &vm.current->frames[vm.current->frameCount - 1];
@@ -385,9 +382,6 @@ InterpretResult raiseValue(Value errVal) {
         unwindToHandler(errVal);
         return INTERPRET_HANDLED_ERROR;
     }
-    // Uncaught within this fiber — stash it (see raiseError() for why).
-    vm.lastCrashError = errVal;
-    vm.hasCrashError = true;
     int line = -1;
     if (vm.current->frameCount > 0) {
         CallFrame* frame = &vm.current->frames[vm.current->frameCount - 1];

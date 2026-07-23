@@ -63,8 +63,6 @@ void initVM(void) {
     vm.readyHead = vm.readyTail = NULL;
     vm.blockedHead = vm.blockedTail = NULL;
     vm.anyFiberCrashed = false;
-    vm.hasCrashError = false;
-    vm.lastCrashError = (Value){VAL_NIL, {.number = 0}};
 
     initTable(&vm.globals);
     initTable(&vm.strings);

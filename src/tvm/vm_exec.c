@@ -508,14 +508,7 @@ InterpretResult run(void) {
             // ── I/O ────────────────────────────────────────────────────────
             case OP_PRINT:    { printValue(pop()); break; }
             case OP_PRINT_NL: { printValue(pop()); putchar('\n'); break; }
-            case OP_RETURN: {
-                // Only emitted once, as the implicit terminator of the
-                // top-level script chunk. Close any upvalues still open
-                // from this frame for consistency with OP_RETURN_VAL /
-                // OP_RETURN_NIL, which both do this before finishing.
-                closeUpvalues(vm.current->stack + 0);
-                return finishCurrentFiber();
-            }
+            case OP_RETURN:   return finishCurrentFiber();
         }
     }
 

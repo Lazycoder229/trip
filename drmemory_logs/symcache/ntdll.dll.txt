@@ -1,6 +1,6 @@
 Dr. Memory symbol cache version 16
-      1891,2029496,5359592759857119232,5359592759857119232,2048895,2127151453,2064384
-1
+      1886,2029496,5359592759857119232,5359592759857119232,2048895,2127151453,2064384
+0
 memcmp,0x906d0
 strcspn,0x913d0
 mallopt,0x0
@@ -56,7 +56,7 @@ RtlSetHeapInformation,0x74db0
 RtlMultipleAllocateHeap,0xf2930
 RtlMultipleFreeHeap,0xf29b0
 RtlFreeHeap,0x24760
-RtlpHeapFailureInfo,0x1697f0
+RtlpHeapFailureInfo,0x0
 RtlFreeStringRoutine,0x0
 LdrShutdownProcess,0x5efa0
 operator delete,0x0

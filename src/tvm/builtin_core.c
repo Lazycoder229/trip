@@ -372,14 +372,6 @@ InterpretResult callBuiltinCore(uint8_t id, uint8_t argc) {
             if (argc != 0) return raiseError("waitAll() takes no arguments");
             // No other fibers — done immediately.
             if (vm.readyHead == NULL && vm.blockedHead == NULL) {
-                if (vm.anyFiberCrashed) {
-                    vm.anyFiberCrashed = false;
-                    Value err = vm.hasCrashError
-                        ? vm.lastCrashError
-                        : (Value){VAL_OBJ, {.obj = (Obj*)copyString("a spawned fiber crashed", 23)}};
-                    vm.hasCrashError = false;
-                    return raiseValue(err);
-                }
                 push(NIL_VAL);
                 break;
             }
@@ -416,14 +408,6 @@ InterpretResult callBuiltinCore(uint8_t id, uint8_t argc) {
                 // blockedHead is also NULL now — all done, fall through to push NIL.
                 // Undo the ip rewind.
                 vm.current->frames[vm.current->frameCount - 1].ip += 3;
-                if (vm.anyFiberCrashed) {
-                    vm.anyFiberCrashed = false;
-                    Value err = vm.hasCrashError
-                        ? vm.lastCrashError
-                        : (Value){VAL_OBJ, {.obj = (Obj*)copyString("a spawned fiber crashed", 23)}};
-                    vm.hasCrashError = false;
-                    return raiseValue(err);
-                }
                 push(NIL_VAL);
             }
             break;
@@ -482,6 +466,7 @@ InterpretResult callBuiltin(uint8_t id, uint8_t argc) {
     if (id >= BUILTIN_WS_HANDSHAKE && id <= BUILTIN_WS_CLOSE) return callBuiltinWs(id, argc);
     if (id >= BUILTIN_TIME && id <= BUILTIN_DATE_MAKE) return callBuiltinTime(id, argc);
     if (id >= BUILTIN_REGEX_TEST && id <= BUILTIN_REGEX_SPLIT) return callBuiltinRegex(id, argc);
+    if (id >= BUILTIN_MYSQL_CONNECT && id <= BUILTIN_MYSQL_POOL_CLOSE) return callBuiltinMysql(id, argc);
 
     return raiseError("Builtin %d not found", id);
 }

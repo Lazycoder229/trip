@@ -43,17 +43,27 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/tvm/net_tls.c \
        $(SRC_DIR)/tvm/net_server.c \
        $(SRC_DIR)/tvm/net_ws.c \
+       $(SRC_DIR)/tvm/db_mysql.c \
 
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD)/%.o,$(SRCS))
+
+# ── MySQL / MariaDB flags ───────────────────────────────────────────────────
+# mariadb_config comes from the mingw-w64-x86_64-libmariadbclient package
+# (NOT "mariadb-connector-c" — that package name doesn't exist in MSYS2).
+# Defined here, BEFORE CFLAGS/LDFLAGS, so both the base build and the
+# debug:/sanitize: overrides below can pull it in.
+MYSQL_CFLAGS = $(shell mariadb_config --cflags)
+MYSQL_LIBS   = $(shell mariadb_config --libs)
 
 # ── Release Flags ─────────────────────────────────────────────────────────────
 CFLAGS  = -O2 -Wall -Wextra -std=c11 \
           -Wno-unused-parameter \
           -D_POSIX_C_SOURCE=200809L \
           -D_XOPEN_SOURCE=700 \
-          -DPCRE2_CODE_UNIT_WIDTH=8
+          -DPCRE2_CODE_UNIT_WIDTH=8 \
+          $(MYSQL_CFLAGS)
 
-LDFLAGS = -lm -lcurl -lssl -lcrypto -lws2_32 -lpcre2-8
+LDFLAGS = -lm -lcurl -lssl -lcrypto -lws2_32 -lpcre2-8 $(MYSQL_LIBS) -lpthread
 
 # IMPORTANT: this must match whichever MSYS2 environment you actually
 # installed curl/openssl/pcre2 into (check with `which gcc` — if it prints
@@ -85,8 +95,24 @@ DRMEMORY_SUPPRESS = drmemory-suppressions.txt
 # against — see tests/test_support.c, which provides `VM vm;` plus faithful
 # copies of the handful of one-line vm_core.c hooks these modules call
 # (vmTrackObject/vmFindInternedString/vmInternString/tripCloseSocketHandle/
-# vmGetScriptPath), without pulling in curl/openssl/the fiber scheduler —
-# none of which a hash-table/allocator/compiler test needs.
+# tripMysqlCloseHandle/vmGetScriptPath), without pulling in curl/openssl/
+# the fiber scheduler/libmariadb — none of which a hash-table/allocator/
+# compiler test needs.
+#
+# NOTE: object.c's freeObject() calls tripMysqlCloseHandle() as a safety
+# net for unclosed mysql connections (same pattern as tripCloseSocketHandle
+# for sockets). Since these test binaries link object.c directly WITHOUT
+# db_mysql.c (the real implementation), you must add a stub for it in
+# tests/test_support.c, right next to the existing tripCloseSocketHandle
+# stub:
+#
+#     void tripMysqlCloseHandle(void* conn) {
+#         (void)conn;
+#     }
+#
+# No mysql.h needed for the stub — object.c only forward-declares it as
+# `void tripMysqlCloseHandle(void* conn);`, so this plain no-op satisfies
+# the linker without pulling libmariadb into these lightweight test binaries.
 TEST_DIR   = tests
 TEST_BUILD = $(BUILD)/tests
 TEST_CFLAGS = -std=c11 -Wall -Wextra -Werror
@@ -194,7 +220,8 @@ debug: CC = clang
 debug: CFLAGS = -g3 -O0 -Wall -Wextra -Werror -std=c11 \
                 -Wno-unused-parameter -D_POSIX_C_SOURCE=200809L \
                 -D_XOPEN_SOURCE=700 \
-                -DPCRE2_CODE_UNIT_WIDTH=8
+                -DPCRE2_CODE_UNIT_WIDTH=8 \
+                $(MYSQL_CFLAGS)
 debug: clean $(TARGET)
 
 # ── Sanitizer Build ───────────────────────────────────────────────────────────
@@ -233,7 +260,8 @@ sanitize: CFLAGS = -g3 -O0 -Wall -Wextra -std=c11 \
                     -fno-omit-frame-pointer \
                     -Wno-unused-parameter -D_POSIX_C_SOURCE=200809L \
                     -D_XOPEN_SOURCE=700 \
-                    -DPCRE2_CODE_UNIT_WIDTH=8
+                    -DPCRE2_CODE_UNIT_WIDTH=8 \
+                    $(MYSQL_CFLAGS)
 sanitize: LDFLAGS += -fsanitize=undefined -fsanitize-undefined-trap-on-error
 sanitize: clean $(TARGET)
 	@echo ""
@@ -480,5 +508,5 @@ help:
 	@echo "  them silently produces the same kind of stale/incompatible-DLL"
 	@echo "  symptoms described in the bundle: target above. Verify with:"
 	@echo "      which gcc clang    (both should print /mingw64/bin/...)"
-	@echo "  MSYS2 deps: pacman -S mingw-w64-x86_64-curl mingw-w64-x86_64-openssl mingw-w64-x86_64-pcre2 mingw-w64-x86_64-clang"
+	@echo "  MSYS2 deps: pacman -S mingw-w64-x86_64-curl mingw-w64-x86_64-openssl mingw-w64-x86_64-pcre2 mingw-w64-x86_64-clang mingw-w64-x86_64-libmariadbclient"
 	@echo ""

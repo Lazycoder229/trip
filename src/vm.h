@@ -113,8 +113,6 @@ typedef struct {
     // non-zero once everything finishes — a crash that nobody saw isn't
     // "fine", it's just deferred.
     bool anyFiberCrashed;
-    Value lastCrashError;   // last uncaught error value from a crashed fiber
-    bool hasCrashError;     // whether lastCrashError is populated
 
     Table globals;
     Table strings;   // interned strings — weak table, see tableRemoveWhite()

@@ -135,14 +135,6 @@ static void markRoots() {
     for (Fiber* fb = vm.readyHead; fb != NULL; fb = fb->next) {
         markFiberRoots(fb);
     }
-    // Fibers blocked on I/O (socket/HTTP) live only in vm.blockedHead until
-    // pollBlockedFibers() moves them back to ready — they are just as much
-    // a root as a ready fiber and must be walked here too, or a fiber
-    // parked mid-await would look unreachable to the GC and get collected
-    // out from under it while it waits.
-    for (Fiber* fb = vm.blockedHead; fb != NULL; fb = fb->next) {
-        markFiberRoots(fb);
-    }
 
     // Global variables.
     markTableValues(&vm.globals);
@@ -231,17 +223,13 @@ static void blackenObject(Obj* object) {
             break;
         }
 
-        case OBJ_SOCKET: {
-            ObjSocket* sock = (ObjSocket*)object;
-            // The native handle isn't an Obj, but serverSocket IS — it's a
-            // back-pointer to the listening ObjSocket an accepted client
-            // came from (see tcpAccept()/net_tcp.c). freeObject() and the
-            // explicit-close path both dereference it (s->serverSocket->
-            // activeConns--), so it must be a marked root or the listening
-            // socket can be swept while a still-live client points at it.
-            markObject((Obj*)sock->serverSocket);
+        case OBJ_SOCKET:
+            // ObjSocket owns a raw native handle, not an Obj — no children to trace.
             break;
-        }
+
+        case OBJ_DB_CONN:
+            // ObjDBConn owns a raw MYSQL* handle, not an Obj — no children to trace.
+            break;
 
         case OBJ_CLASS: {
             ObjClass* klass = (ObjClass*)object;

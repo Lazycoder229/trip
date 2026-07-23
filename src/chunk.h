@@ -178,6 +178,28 @@ typedef enum {
     BUILTIN_REGEX_REPLACE,     // regexReplace(str, pattern, repl)      -> string
     BUILTIN_REGEX_REPLACE_ALL, // regexReplaceAll(str, pattern, repl)   -> string
     BUILTIN_REGEX_SPLIT,       // regexSplit(str, pattern)              -> list
+    // MySQL / MariaDB (libmysqlclient-backed)
+    BUILTIN_MYSQL_CONNECT,     // mysqlConnect(host, user, pass, db [, port]) -> db connection | nil
+    BUILTIN_MYSQL_QUERY,       // mysqlQuery(conn, sql)                       -> list of dicts (SELECT) | number (affected rows)
+    BUILTIN_MYSQL_ESCAPE,      // mysqlEscape(conn, str)                      -> string (SQL-injection-safe literal, no quotes added)
+    BUILTIN_MYSQL_LAST_INSERT_ID, // mysqlLastInsertId(conn)                  -> number
+    BUILTIN_MYSQL_ERROR,       // mysqlError(conn)                            -> string | nil
+    BUILTIN_MYSQL_CLOSE,          // mysqlClose(conn)                            -> nil
+    // ── New MySQL builtins ──────────────────────────────────────────────
+    BUILTIN_MYSQL_PING,           // mysqlPing(conn)                          -> bool
+    BUILTIN_MYSQL_AFFECTED_ROWS,  // mysqlAffectedRows(conn)                  -> number
+    BUILTIN_MYSQL_QUERY_MULTI,    // mysqlQueryMulti(conn, sql)               -> list of lists
+    BUILTIN_MYSQL_INSERT_BATCH,   // mysqlInsertBatch(conn, table, rows)      -> number
+    BUILTIN_MYSQL_BEGIN,          // mysqlBegin(conn)                         -> nil
+    BUILTIN_MYSQL_COMMIT,         // mysqlCommit(conn)                        -> nil
+    BUILTIN_MYSQL_ROLLBACK,       // mysqlRollback(conn)                      -> nil
+    BUILTIN_MYSQL_PREPARE,        // mysqlPrepare(conn, sql)                  -> stmtHandle
+    BUILTIN_MYSQL_EXECUTE,        // mysqlExecute(stmtHandle, paramList)      -> list | number
+    BUILTIN_MYSQL_STMT_CLOSE,     // mysqlStmtClose(stmtHandle)              -> nil
+    BUILTIN_MYSQL_POOL_CREATE,    // mysqlPoolCreate(h,u,p,db,max[,port])    -> poolHandle
+    BUILTIN_MYSQL_POOL_GET,       // mysqlPoolGet(poolHandle)                -> conn
+    BUILTIN_MYSQL_POOL_RELEASE,   // mysqlPoolRelease(pool, conn)            -> nil
+    BUILTIN_MYSQL_POOL_CLOSE,     // mysqlPoolClose(poolHandle)              -> nil
 } BuiltinId;
 
 // IDs for OP_CALL_METHOD (method on a receiver type)

@@ -204,6 +204,25 @@ ObjSocket* newSocket(TripSocketHandle handle, bool isListening) {
     return socket;
 }
 
+// Implemented in tvm/db_mysql.c (that file owns mysql.h). object.c stays
+// free of the libmysqlclient header, same reasoning as ObjSocket keeping
+// OpenSSL specifics out of the platform-agnostic parts of this file.
+extern void tripMysqlCloseHandle(void* conn);
+extern void tripMysqlCloseStmt(void* stmt);   // MYSQL_STMT* teardown
+extern void tripMysqlFreePool(void* pool);    // MysqlPool*  teardown
+
+ObjDBConn* newDBConn(void* conn) {
+    ObjDBConn* db = (ObjDBConn*)allocateObject(sizeof(ObjDBConn), OBJ_DB_CONN);
+    db->conn     = conn;
+    db->closed   = false;
+    db->isPool   = false;
+    db->pool     = NULL;
+    db->isStmt   = false;
+    db->stmt     = NULL;
+    db->fromPool = false;
+    return db;
+}
+
 ObjClass* newClass(ObjString* name) {
     ObjClass* klass = (ObjClass*)allocateObject(sizeof(ObjClass), OBJ_CLASS);
     klass->name = name;
@@ -339,6 +358,44 @@ void freeObject(Obj* object) {
         case OBJ_BOUND_METHOD: {
             // receiver and method are GC managed
             reallocate(object, sizeof(ObjBoundMethod), 0);
+            break;
+        }
+        case OBJ_DB_CONN: {
+            // Safety net — mirrors OBJ_SOCKET above.
+            // Three distinct handle shapes share ObjDBConn:
+            //   • isPool  → MysqlPool* in db->pool  (no raw MYSQL* here)
+            //   • isStmt  → MYSQL_STMT* in db->stmt (no raw MYSQL* here)
+            //   • plain   → MYSQL* in db->conn
+            // Pool and stmt teardown is handled by their own close builtins;
+            // we only need to cover the "script forgot to close" case here.
+            // tripMysqlFreePool / tripMysqlCloseStmt are forward-declared
+            // in db_mysql.c and called through these extern wrappers so
+            // object.c stays free of mysql.h (same pattern as the conn case).
+            ObjDBConn* db = (ObjDBConn*)object;
+            if (!db->closed) {
+                if (db->isPool && db->pool != NULL) {
+                    tripMysqlFreePool(db->pool);
+                    db->pool   = NULL;
+                } else if (db->isStmt && db->stmt != NULL) {
+                    tripMysqlCloseStmt(db->stmt);
+                    db->stmt   = NULL;
+                } else if (db->fromPool) {
+                    // This handle borrows a connection owned by a
+                    // MysqlPool. The pool (via mysqlPoolClose /
+                    // tripMysqlFreePool) is the only thing allowed to
+                    // mysql_close() it — closing it here would leave the
+                    // pool holding a dangling MYSQL* and double-free it
+                    // later. The script forgot to call mysqlPoolRelease();
+                    // we just drop this handle's reference, not the
+                    // underlying connection.
+                    db->conn = NULL;
+                } else if (db->conn != NULL) {
+                    tripMysqlCloseHandle(db->conn);
+                    db->conn   = NULL;
+                }
+                db->closed = true;
+            }
+            reallocate(object, sizeof(ObjDBConn), 0);
             break;
         }
     }

@@ -19,6 +19,7 @@ typedef enum {
     OBJ_CLASS,
     OBJ_INSTANCE,
     OBJ_BOUND_METHOD,
+    OBJ_DB_CONN,
 } ObjType;
 
 // Base heap object header (all heap objects start with this)
@@ -144,6 +145,26 @@ typedef struct ObjSocket {
     bool     tlsHandshakeDone;
 } ObjSocket;
 
+// ── MySQL / MariaDB connection ─────────────────────────────────────────
+// Opaque wrapper around a libmysqlclient MYSQL* handle. Mirrors ObjSocket's
+// "raw native handle, no GC children to trace" shape.
+typedef struct ObjDBConn {
+    Obj    obj;
+    void*  conn;    // MYSQL* — void* here so object.h doesn't need mysql.h
+    bool   closed;
+    // Pool handle: conn==NULL, pool points to a MysqlPool* (db_mysql.c)
+    bool   isPool;
+    void*  pool;
+    // Prepared-statement handle: conn==NULL, stmt points to a MYSQL_STMT*
+    bool   isStmt;
+    void*  stmt;
+    // true when this handle's `conn` is a connection checked out from a
+    // pool via mysqlPoolGet() — the pool (not this handle) owns the raw
+    // MYSQL*, so neither mysqlClose() nor the GC safety net may call
+    // mysql_close() on it. Only mysqlPoolRelease() may relinquish it.
+    bool   fromPool;
+} ObjDBConn;
+
 // ── Class ────────────────────────────────────────────────────────────────
 typedef struct ObjClass {
     Obj obj;
@@ -176,6 +197,8 @@ typedef struct ObjBoundMethod {
 #define IS_CLASS(v)         (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_CLASS)
 #define IS_INSTANCE(v)      (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_INSTANCE)
 #define IS_BOUND_METHOD(v)  (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_BOUND_METHOD)
+#define IS_DB_CONN(v)       (IS_OBJ(v) && OBJ_TYPE(v) == OBJ_DB_CONN)
+#define AS_DB_CONN(v)       ((ObjDBConn*)AS_OBJ(v))
 
 #define AS_STRING(v)        ((ObjString*)AS_OBJ(v))
 #define AS_LIST(v)          ((ObjList*)AS_OBJ(v))
@@ -202,6 +225,7 @@ ObjFunction* newFunction(ObjString* name, int arity);
 ObjClosure*  newClosure(ObjFunction* function);
 ObjUpvalue*  newUpvalue(Value* slot);
 ObjSocket*   newSocket(TripSocketHandle handle, bool isListening);
+ObjDBConn*   newDBConn(void* conn);
 ObjClass*    newClass(ObjString* name);
 ObjInstance* newInstance(ObjClass* klass);
 ObjBoundMethod* newBoundMethod(Value receiver, ObjClosure* method);

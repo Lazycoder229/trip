@@ -128,6 +128,7 @@ InterpretResult callBuiltinTcp(uint8_t id, uint8_t argc);
 InterpretResult callBuiltinTls(uint8_t id, uint8_t argc);
 InterpretResult callBuiltinServer(uint8_t id, uint8_t argc);
 InterpretResult callBuiltinWs(uint8_t id, uint8_t argc);
+InterpretResult callBuiltinMysql(uint8_t id, uint8_t argc);
 bool ws_send_all(TripSocketHandle sock, const char* buf, size_t len);
 
 // Sa HTTP declarations section:
